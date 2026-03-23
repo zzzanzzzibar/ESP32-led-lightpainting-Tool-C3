@@ -547,7 +547,10 @@ void afficherFeedbackMode() {
 // -----------------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
-    delay(200);
+    // ESP32-C3 USB-CDC : attendre que le port soit pret (jusqu'a 2s max)
+    uint32_t t0 = millis();
+    while (!Serial && (millis() - t0 < 2000)) { delay(10); }
+    delay(100);
 
     chargerConfig();  // charger la config depuis NVS avant tout
     chargerModeUI();  // charger le mode UI (simple/expert)
@@ -1015,7 +1018,10 @@ void updateAnimation() {
 }
 void setupWifi() {
     WiFi.mode(WIFI_AP);
-    WiFi.softAP("LightPainting", "");
+    delay(100);  // C3 : laisser le mode s'initialiser
+    // Canal 6, max 4 clients
+    bool ok = WiFi.softAP("LightPainting", nullptr, 6, 0, 4);
+    Serial.print(F("softAP : ")); Serial.println(ok ? F("OK") : F("FAIL"));
     Serial.print(F("AP IP : "));
     Serial.println(WiFi.softAPIP());
 }
