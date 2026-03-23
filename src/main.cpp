@@ -1,6 +1,6 @@
 // =============================================================================
 // ESP32-C3 Super Mini — Light Painting Tool - avec interface Web
-// WiFi AP : SSID="LightPainting" -> 192.168.4.1
+// WiFi AP : SSID="Lightpainting ESP by JDK" -> 192.168.4.1
 //
 // GPIO5   LUMIERE    : maintenir = lumiere principale allumee (mode courant)
 // GPIO6   MODE       : appui court = mode suivant (cycle toujours)
@@ -1053,7 +1053,7 @@ void setupWifi() {
     WiFi.mode(WIFI_AP);
     delay(200);  // C3 : laisser le mode AP s'initialiser
     // Canal 1 (plus universel), max 4 clients, pas de mot de passe
-    bool ok = WiFi.softAP("LightPainting", nullptr, 13, 0, 4);
+    bool ok = WiFi.softAP("Lightpainting ESP by JDK", nullptr, 13, 0, 4);
     Serial.print(F("softAP : ")); Serial.println(ok ? F("OK") : F("FAIL"));
     Serial.print(F("AP IP : "));
     Serial.println(WiFi.softAPIP());
