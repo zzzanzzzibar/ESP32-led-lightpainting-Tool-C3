@@ -153,8 +153,7 @@ select:focus{border-color:#555}
       <div class="btn-group" id="grp-leds-s">
         <div class="btn-choice" onclick="setNbLeds(0)">10</div>
         <div class="btn-choice" onclick="setNbLeds(1)">30</div>
-        <div class="btn-choice active" onclick="setNbLeds(2)">40</div>
-        <div class="btn-choice" onclick="setNbLeds(3)">50</div>
+        <div class="btn-choice active" onclick="setNbLeds(2)">50</div>
       </div>
     </div>
     <div class="row">
@@ -194,8 +193,7 @@ select:focus{border-color:#555}
     <div class="btn-group" id="grp-leds">
       <div class="btn-choice" onclick="setNbLeds(0)">10</div>
       <div class="btn-choice" onclick="setNbLeds(1)">30</div>
-      <div class="btn-choice active" onclick="setNbLeds(2)">40</div>
-      <div class="btn-choice" onclick="setNbLeds(3)">50</div>
+      <div class="btn-choice active" onclick="setNbLeds(2)">50</div>
     </div>
   </div>
   <div class="row">

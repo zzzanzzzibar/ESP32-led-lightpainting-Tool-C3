@@ -810,7 +810,11 @@ void lireBoutons() {
         Serial.print(lumiereActive ? F("ON ") : F("OFF "));
         Serial.print(modeExpert ? F("EXPERT ") : F("SIMPLE "));
         Serial.print(NOM_ANIMATIONS[cfg.animation]);
-        Serial.print(F(" leds=")); Serial.println(cfg.nbLeds());
+        Serial.print(F(" leds=")); Serial.print(cfg.nbLeds());
+        Serial.print(F(" | WiFi AP="));
+        Serial.print(WiFi.softAPIP());
+        Serial.print(F(" clients="));
+        Serial.println(WiFi.softAPgetStationNum());
     }
 
     bool btn25 = (digitalRead(PIN_LUMIERE)  == LOW);
@@ -1017,10 +1021,13 @@ void updateAnimation() {
     }
 }
 void setupWifi() {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    delay(200);  // C3 : laisser la radio s'eteindre completement
     WiFi.mode(WIFI_AP);
-    delay(100);  // C3 : laisser le mode s'initialiser
-    // Canal 6, max 4 clients
-    bool ok = WiFi.softAP("LightPainting", nullptr, 6, 0, 4);
+    delay(200);  // C3 : laisser le mode AP s'initialiser
+    // Canal 1 (plus universel), max 4 clients, pas de mot de passe
+    bool ok = WiFi.softAP("LightPainting", nullptr, 13, 0, 4);
     Serial.print(F("softAP : ")); Serial.println(ok ? F("OK") : F("FAIL"));
     Serial.print(F("AP IP : "));
     Serial.println(WiFi.softAPIP());
