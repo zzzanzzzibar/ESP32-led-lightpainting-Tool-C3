@@ -412,9 +412,7 @@ function hexRgb(h){
   return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)};
 }
 function send(obj){
-  fetch('/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)})
-    .then(function(){ poll(); })
-    .catch(function(){});
+  fetch('/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
 }
 function setActiveBtn(groupId,idx){
   var g=document.getElementById(groupId);

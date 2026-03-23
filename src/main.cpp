@@ -651,9 +651,9 @@ void loop() {
     bool lumiere25 = (digitalRead(PIN_LUMIERE) == LOW);
     if (lumiere25 && !lumiereActive) {
         lumiereActive = true;
-        animDerniereUs = nowUs;
-        animEtatBlink  = true;   // commence allume
         resetAnim();
+        animEtatBlink  = true;   // commence allumé (après resetAnim pour ne pas être écrasé)
+        animDerniereUs = micros();
         Serial.print(F("[ON] "));
         Serial.println(NOM_ANIMATIONS[cfg.animation]);
     } else if (!lumiere25 && lumiereActive) {
@@ -674,8 +674,8 @@ void loop() {
     bool pointeur27 = modeExpert && (digitalRead(PIN_POINTEUR) == LOW);
     if (pointeur27 && !pointeurActive) {
         pointeurActive   = true;
-        animDerniereUsC2 = nowUs;
-        animEtatBlinkC2  = true;  // commence allume
+        animEtatBlinkC2  = true;   // commence allumé
+        animDerniereUsC2 = micros();
         Serial.println(F("[POINTEUR ON]"));
     } else if (!pointeur27 && pointeurActive) {
         pointeurActive = false;
@@ -1155,15 +1155,27 @@ void setupServer() {
             if (doc["densite"].is<int>())              cfg.densite            = doc["densite"];
             if (doc["idxFreqBlink"].is<int>()) {
                 uint8_t v = doc["idxFreqBlink"];
-                if (v < NB_BLINK_FREQS) cfg.idxFreqBlink = v;
+                if (v < NB_BLINK_FREQS) {
+                    cfg.idxFreqBlink = v;
+                    animDerniereUs   = micros();  // repart proprement depuis maintenant
+                    animEtatBlink    = true;       // commence toujours allumé
+                }
             }
             if (doc["idxFreqBlinkSimple"].is<int>()) {
                 uint8_t v = doc["idxFreqBlinkSimple"];
-                if (v < NB_BLINK_FREQS) cfg.idxFreqBlinkSimple = v;
+                if (v < NB_BLINK_FREQS) {
+                    cfg.idxFreqBlinkSimple = v;
+                    animDerniereUs         = micros();
+                    animEtatBlink          = true;
+                }
             }
             if (doc["idxFreqBlinkC2"].is<int>()) {
                 uint8_t v = doc["idxFreqBlinkC2"];
-                if (v < NB_BLINK_FREQS) cfg.idxFreqBlinkC2 = v;
+                if (v < NB_BLINK_FREQS) {
+                    cfg.idxFreqBlinkC2 = v;
+                    animDerniereUsC2   = micros();  // repart proprement depuis maintenant
+                    animEtatBlinkC2    = true;       // commence toujours allumé
+                }
             }
             if (doc["idxVitesseRainbow"].is<int>()) {
                 uint8_t v = doc["idxVitesseRainbow"];
