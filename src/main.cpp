@@ -67,7 +67,7 @@ static const uint8_t BRIGHTNESS_LEVELS[7] = { 3, 13, 26, 64, 128, 204, 255 };
 #define NB_LUM_LEVELS 7
 
 // Choix valides pour le nombre de LEDs
-static const uint8_t NB_LEDS_CHOICES[4] = { 10, 30, 40, 50 };
+static const uint8_t NB_LEDS_CHOICES[5] = { 10, 30, 39, 40, 50 };
 
 // Paliers de frequence clignotement (periodes en MICROSECONDES)
 //   idx 0 = Fix    (pas de clignotement, toujours allume)
@@ -138,7 +138,7 @@ struct Config {
     // Luminosite : indice 0-6 dans BRIGHTNESS_LEVELS (defaut = 4 -> 50%)
     uint8_t  niveauLuminosite  = 4;
 
-    // Nb LEDs : indice 0-3 dans NB_LEDS_CHOICES (defaut = 2 -> 40)
+    // Nb LEDs : indice 0-4 dans NB_LEDS_CHOICES (defaut = 2 -> 39)
     uint8_t  idxNbLeds         = 2;
 
     uint8_t  animation         = ANIM_STATIQUE;
@@ -167,7 +167,7 @@ struct Config {
     bool     patternDefilant   = true;
 
     // --- helpers ---
-    uint8_t  nbLeds()        const { return NB_LEDS_CHOICES[idxNbLeds < 4 ? idxNbLeds : 3]; }
+    uint8_t  nbLeds()        const { return NB_LEDS_CHOICES[idxNbLeds < 5 ? idxNbLeds : 4]; }
     uint8_t  intensite()     const { return BRIGHTNESS_LEVELS[niveauLuminosite < NB_LUM_LEVELS ? niveauLuminosite : NB_LUM_LEVELS-1]; }
     uint8_t  taillePoint()   const { return TAILLE_POINT_CHOICES[idxTaillePoint < 4 ? idxTaillePoint : 0]; }
     // Retourne la periode en µs pour Btn1 en mode Expert ; 0 = Fix
@@ -1130,7 +1130,7 @@ void setupServer() {
             }
             if (doc["idxNbLeds"].is<int>()) {
                 uint8_t v = doc["idxNbLeds"];
-                if (v < 4) { cfg.idxNbLeds = v; resetAnim(); }
+                if (v < 5) { cfg.idxNbLeds = v; resetAnim(); }
             }
             if (doc["animation"].is<int>()) {
                 cfg.animation = doc["animation"];

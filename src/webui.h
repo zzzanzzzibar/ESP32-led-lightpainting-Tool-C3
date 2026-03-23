@@ -153,8 +153,9 @@ select:focus{border-color:#555}
       <div class="btn-group" id="grp-leds-s">
         <div class="btn-choice" onclick="setNbLeds(0)">10</div>
         <div class="btn-choice" onclick="setNbLeds(1)">30</div>
-        <div class="btn-choice active" onclick="setNbLeds(2)">40</div>
-        <div class="btn-choice" onclick="setNbLeds(3)">50</div>
+        <div class="btn-choice active" onclick="setNbLeds(2)">39</div>
+        <div class="btn-choice" onclick="setNbLeds(3)">40</div>
+        <div class="btn-choice" onclick="setNbLeds(4)">50</div>
       </div>
     </div>
     <div class="row">
@@ -194,8 +195,9 @@ select:focus{border-color:#555}
     <div class="btn-group" id="grp-leds">
       <div class="btn-choice" onclick="setNbLeds(0)">10</div>
       <div class="btn-choice" onclick="setNbLeds(1)">30</div>
-      <div class="btn-choice active" onclick="setNbLeds(2)">40</div>
-      <div class="btn-choice" onclick="setNbLeds(3)">50</div>
+      <div class="btn-choice active" onclick="setNbLeds(2)">39</div>
+      <div class="btn-choice" onclick="setNbLeds(3)">40</div>
+      <div class="btn-choice" onclick="setNbLeds(4)">50</div>
     </div>
   </div>
   <div class="row">
@@ -385,7 +387,7 @@ var nbLedsIdx = 2;
 var pointIdx  = 0;
 var posPoint  = 0;
 var pointColor= '#0000ff';
-var NB_LEDS_CHOICES = [10, 30, 40, 50];
+var NB_LEDS_CHOICES = [10, 30, 39, 40, 50];
 var TAILLE_POINT    = [1, 10, 30, 50];
 // Valeurs en attente pour patternSlot1/2 (arrivées avant fillPatterns)
 var pendingSlot1 = null;
