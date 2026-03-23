@@ -194,6 +194,11 @@ Config cfg;
 // -----------------------------------------------------------------------------
 Preferences prefs;
 
+// Sauvegarde NVS différée : on évite de bloquer la loop à chaque /set
+bool     cfgDirty       = false;
+uint32_t cfgDirtyMs     = 0;
+#define  CFG_SAVE_DELAY_MS 2000  // sauvegarde 2s après le dernier changement
+
 void sauvegarderConfig() {
     prefs.begin("lp", false);
     prefs.putUChar("r1",   cfg.r1);   prefs.putUChar("g1", cfg.g1); prefs.putUChar("b1", cfg.b1);
@@ -214,6 +219,12 @@ void sauvegarderConfig() {
     prefs.putUShort("pvit",cfg.patternVitesse);
     prefs.putBool ("pdef", cfg.patternDefilant);
     prefs.end();
+}
+
+// Planifie une sauvegarde NVS dans CFG_SAVE_DELAY_MS ms (évite les freezes à chaque /set)
+void scheduleSave() {
+    cfgDirty   = true;
+    cfgDirtyMs = millis();
 }
 
 void chargerConfig() {
@@ -627,6 +638,11 @@ void setup() {
 // LOOP
 // -----------------------------------------------------------------------------
 void loop() {
+    // Sauvegarde NVS différée : écrire seulement si rien n'a changé depuis CFG_SAVE_DELAY_MS
+    if (cfgDirty && (millis() - cfgDirtyMs >= CFG_SAVE_DELAY_MS)) {
+        cfgDirty = false;
+        sauvegarderConfig();
+    }
     lireBoutons();
 
     uint32_t nowUs = micros();
@@ -1175,7 +1191,7 @@ void setupServer() {
             }
             if (doc["patternVitesse"].is<int>())       cfg.patternVitesse     = doc["patternVitesse"];
             if (doc["patternDefilant"].is<bool>())     cfg.patternDefilant    = doc["patternDefilant"];
-            sauvegarderConfig();
+            scheduleSave();  // sauvegarde NVS différée pour ne pas bloquer la loop
             req->send(200, "text/plain", "ok");
         }
     );
