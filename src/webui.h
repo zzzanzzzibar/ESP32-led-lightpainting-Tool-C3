@@ -394,6 +394,9 @@ var TAILLE_POINT    = [1, 10, 30, 50];
 var pendingSlot1 = null;
 var pendingSlot2 = null;
 var patternsFilled = false;  // les options ne sont créées qu'une seule fois
+// Anti-écrasement poll : si un /set vient d'être envoyé, ignorer le prochain poll
+var lastSendMs = 0;
+var SEND_GUARD_MS = 800;  // délai en ms pendant lequel le poll ne réécrase pas l'UI
 
 // Init visu 50 cellules
 (function(){
@@ -412,6 +415,7 @@ function hexRgb(h){
   return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)};
 }
 function send(obj){
+  lastSendMs = Date.now();
   fetch('/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
 }
 function setActiveBtn(groupId,idx){
@@ -574,37 +578,43 @@ function updateVisuPoint(){
 
 // Sync état complet depuis ESP
 function applyState(s){
+  var guard = (Date.now() - lastSendMs) < SEND_GUARD_MS;
+
   document.getElementById('c1').value=toHex(s.r1,s.g1,s.b1);
   document.getElementById('c1-s').value=toHex(s.r1,s.g1,s.b1);
   document.getElementById('c2').value=toHex(s.r2,s.g2,s.b2);
   pointColor=toHex(s.r2,s.g2,s.b2);
 
-  if(s.idxNbLeds!==undefined){ nbLedsIdx=s.idxNbLeds; setActiveBtn('grp-leds',nbLedsIdx); setActiveBtn('grp-leds-s',nbLedsIdx); }
-  if(s.niveauLuminosite!==undefined){ setActiveBtn('grp-lum',s.niveauLuminosite); setActiveBtn('grp-lum-s',s.niveauLuminosite); }
-  if(s.densite!==undefined){
-    document.getElementById('densite').value=s.densite;
+  if(!guard){
+    if(s.idxNbLeds!==undefined){ nbLedsIdx=s.idxNbLeds; setActiveBtn('grp-leds',nbLedsIdx); setActiveBtn('grp-leds-s',nbLedsIdx); }
+    if(s.niveauLuminosite!==undefined){ setActiveBtn('grp-lum',s.niveauLuminosite); setActiveBtn('grp-lum-s',s.niveauLuminosite); }
+    if(s.densite!==undefined){
+      document.getElementById('densite').value=s.densite;
+    }
+    if(s.idxFreqBlink!==undefined){ setActiveBtn('grp-blink1',s.idxFreqBlink); }
+    if(s.idxFreqBlinkSimple!==undefined){ setActiveBtn('grp-blink1-s',s.idxFreqBlinkSimple); }
+    if(s.idxFreqBlinkC2!==undefined) setActiveBtn('grp-blink2',s.idxFreqBlinkC2);
+    if(s.idxVitesseRainbow!==undefined) setActiveBtn('grp-rain',s.idxVitesseRainbow);
   }
-  if(s.idxFreqBlink!==undefined){ setActiveBtn('grp-blink1',s.idxFreqBlink); }
-  if(s.idxFreqBlinkSimple!==undefined){ setActiveBtn('grp-blink1-s',s.idxFreqBlinkSimple); }
-  if(s.idxFreqBlinkC2!==undefined) setActiveBtn('grp-blink2',s.idxFreqBlinkC2);
-  if(s.idxVitesseRainbow!==undefined) setActiveBtn('grp-rain',s.idxVitesseRainbow);
 
   // Pattern : stocker les valeurs en attente, puis remplir les selects
   if(s.patternSlot1!==undefined) pendingSlot1=s.patternSlot1;
   if(s.patternSlot2!==undefined) pendingSlot2=s.patternSlot2;
   if(s.patternsNoms && s.patternsNoms.length) fillPatterns(s.patternsNoms);
 
-  if(s.patternActif!==undefined) setActiveBtn('grp-patslot',s.patternActif);
-  if(s.patternVitesse!==undefined){
-    document.getElementById('patternVitesse').value=s.patternVitesse;
-    document.getElementById('lbl-pvit').textContent=s.patternVitesse+' ms';
-  }
-  if(s.patternDefilant!==undefined)
-    document.getElementById('patternDefilant').value=s.patternDefilant?'true':'false';
+  if(!guard){
+    if(s.patternActif!==undefined) setActiveBtn('grp-patslot',s.patternActif);
+    if(s.patternVitesse!==undefined){
+      document.getElementById('patternVitesse').value=s.patternVitesse;
+      document.getElementById('lbl-pvit').textContent=s.patternVitesse+' ms';
+    }
+    if(s.patternDefilant!==undefined)
+      document.getElementById('patternDefilant').value=s.patternDefilant?'true':'false';
 
-  if(s.idxTaillePoint!==undefined){ pointIdx=s.idxTaillePoint; setActiveBtn('grp-point',pointIdx); }
-  if(s.posPoint!==undefined){ posPoint=s.posPoint; setActiveBtn('grp-pos',posPoint); }
-  if(s.animation!==undefined && s.animation!==animIdx) setAnim(s.animation);
+    if(s.idxTaillePoint!==undefined){ pointIdx=s.idxTaillePoint; setActiveBtn('grp-point',pointIdx); }
+    if(s.posPoint!==undefined){ posPoint=s.posPoint; setActiveBtn('grp-pos',posPoint); }
+    if(s.animation!==undefined && s.animation!==animIdx) setAnim(s.animation);
+  }
 
   if(s.batteryPercent!==undefined && s.batteryVoltage!==undefined)
     applyBattery(s.batteryPercent, s.batteryVoltage, !!s.charging);
