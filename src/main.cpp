@@ -365,7 +365,7 @@ void chargerModeUI() {
 // Detection bascule 3 boutons simultanes (Simple <-> Expert)
 bool     tripleActif    = false;
 uint32_t tripleDebut    = 0;
-#define  TRIPLE_DUR_MS  2000   // duree maintien pour basculer
+#define  TRIPLE_DUR_MS  2000   // duree maintien pour basculer (2s)
 
 // Feedback LED apres changement de mode (GPIO26)
 bool     feedbackActif  = false;
@@ -855,7 +855,7 @@ void lireBoutons() {
             tripleDebut = now;
         } else if (now - tripleDebut >= TRIPLE_DUR_MS) {
             tripleActif = false;
-            tripleDebut = now + 60000UL;  // anti-rebond 1 min
+            tripleDebut = now + 10000UL;  // anti-rebond 10s
             modeExpert = !modeExpert;
             sauvegarderModeUI();
             // En mode Simple : forcer animation statique

@@ -382,11 +382,12 @@ select:focus{border-color:#555}
 </div><!-- fin mode-expert-view -->
 
 <script>
-var animIdx   = 0;
-var nbLedsIdx = 2;
-var pointIdx  = 0;
-var posPoint  = 0;
-var pointColor= '#0000ff';
+var animIdx      = 0;
+var nbLedsIdx    = 2;
+var pointIdx     = 0;
+var posPoint     = 0;
+var pointColor   = '#0000ff';
+var modeExpertJS = false;  // etat reel du mode, synchronise depuis l'ESP
 var NB_LEDS_CHOICES = [10, 30, 39, 40, 50];
 var TAILLE_POINT    = [1, 10, 30, 50];
 // Valeurs en attente pour patternSlot1/2 (arrivées avant fillPatterns)
@@ -423,12 +424,13 @@ function setActiveBtn(groupId,idx){
 
 // Mode Simple / Expert
 function applyModeUI(expert){
+  modeExpertJS = expert;
   document.body.className = expert ? 'show-expert' : 'show-simple';
   document.getElementById('mode-label').textContent = expert ? 'Expert' : 'Simple';
   document.getElementById('btn-mode-toggle').textContent = expert ? '← Mode Simple' : 'Mode Expert →';
 }
 function toggleMode(){
-  var next = document.body.className !== 'show-expert';
+  var next = !modeExpertJS;
   fetch('/setmode',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({modeExpert:next})});
   applyModeUI(next);
