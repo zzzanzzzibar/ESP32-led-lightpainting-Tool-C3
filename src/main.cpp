@@ -466,40 +466,64 @@ void allumerLeds() {
     needShow = true;
 }
 
+// Eteint les LEDs occupées par le pointeur (pour simuler phase OFF du clignotement)
+void eteindreLEDsPointeur() {
+    uint8_t barN = cfg.nbLeds();
+    uint8_t tp   = cfg.taillePoint();
+    if (tp < 1) tp = 1;
+    if (tp > barN) tp = barN;
+    switch (cfg.posPoint) {
+        case 0: { uint8_t c = barN/2; uint8_t s = c - tp/2; uint8_t e = s + tp; for (uint8_t i = s; i < e && i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black; break; }
+        case 1: { for (uint8_t i = 0; i < tp && i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black; break; }
+        case 2: { uint8_t e = barN; uint8_t s = e - tp; for (uint8_t i = s; i < e && i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black; break; }
+        case 3: {
+            for (uint8_t i = 0; i < tp && i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
+            uint8_t e = barN; uint8_t s = e - tp;
+            for (uint8_t i = s; i < e && i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
+            break;
+        }
+    }
+}
+
 void afficherPointeur() {
-    uint8_t barStart = cfg.ledStart();
-    uint8_t barN     = cfg.nbLeds();
+    uint8_t barStart = cfg.ledStart();   // 0
+    uint8_t barN     = cfg.nbLeds();     // nb leds actif
     uint8_t tp       = cfg.taillePoint();
+    if (tp < 1)   tp = 1;
     if (tp > barN) tp = barN;
 
     // Ne pas effacer le buffer : on superpose le point sur l'animation en cours
-
     switch (cfg.posPoint) {
         case 0: {  // Centre
             uint8_t c = barStart + barN / 2;
-            uint8_t s = (c >= tp/2) ? c - tp/2 : 0;
-            uint8_t e = s + tp; if (e > LED_COUNT_MAX) e = LED_COUNT_MAX;
+            uint8_t s = c - tp / 2;
+            uint8_t e = s + tp;
+            if (e > LED_COUNT_MAX) { e = LED_COUNT_MAX; s = (e > tp) ? e - tp : 0; }
             for (uint8_t i = s; i < e; i++) leds[i] = couleurPtr();
             break;
         }
-        case 1: {  // Extreme gauche
+        case 1: {  // Extrême gauche
             uint8_t s = barStart;
-            uint8_t e = s + tp; if (e > LED_COUNT_MAX) e = LED_COUNT_MAX;
+            uint8_t e = s + tp;
+            if (e > barStart + barN) e = barStart + barN;
             for (uint8_t i = s; i < e; i++) leds[i] = couleurPtr();
             break;
         }
-        case 2: {  // Extreme droite
+        case 2: {  // Extrême droite
             uint8_t e = barStart + barN;
-            uint8_t s = (e >= tp) ? e - tp : 0;
+            uint8_t s = e - tp;
             for (uint8_t i = s; i < e; i++) leds[i] = couleurPtr();
             break;
         }
-        case 3: {  // Deux cotes
+        case 3: {  // Deux côtés
+            // Gauche
             uint8_t sL = barStart;
-            uint8_t eL = sL + tp; if (eL > LED_COUNT_MAX) eL = LED_COUNT_MAX;
+            uint8_t eL = sL + tp;
+            if (eL > barStart + barN) eL = barStart + barN;
             for (uint8_t i = sL; i < eL; i++) leds[i] = couleurPtr();
+            // Droite
             uint8_t eR = barStart + barN;
-            uint8_t sR = (eR >= tp) ? eR - tp : 0;
+            uint8_t sR = eR - tp;
             for (uint8_t i = sR; i < eR; i++) leds[i] = couleurPtr();
             break;
         }
@@ -673,15 +697,16 @@ void loop() {
             }
 
             // C2 en mode Simple : additif sur toute la barre (pas de pointeur)
-            // C2 en mode Expert : pointeur positionné (afficherPointeur gère la superposition)
-            if (phaseC2on) {
-                if (!modeExpert) {
+            // C2 en mode Expert : pointeur positionné, toujours dessiné même en phase OFF
+            if (!modeExpert) {
+                if (phaseC2on) {
                     for (uint8_t i = 0; i < nb; i++) {
                         if (i % cfg.densite == 0) leds[st + i] += couleur2();
                     }
-                } else {
-                    afficherPointeur();
                 }
+            } else if (pointeurActive) {
+                afficherPointeur();
+                if (!phaseC2on) eteindreLEDsPointeur();
             }
             needShow = true;
         } else {
@@ -689,8 +714,8 @@ void loop() {
             if (lumiereActive) updateAnimation();
             if (pointeurActive) {
                 if (!lumiereActive) clearLeds();
-                if (phaseC2on) afficherPointeur();
-                else { /* pointeur en phase OFF : ne pas le dessiner */ }
+                afficherPointeur();
+                if (!phaseC2on) eteindreLEDsPointeur();
                 needShow = true;
             }
         }
