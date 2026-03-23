@@ -9,10 +9,11 @@
 // GPIO10  LED STRIP  : data WS2812
 // GPIO1   ADC BAT    : pont diviseur 10k/10k sur Vbat-18650
 //
-// LEDs toujours centrees sur une base de 50 :
-//   10 leds -> indices 20..29
-//   30 leds -> indices 10..39
-//   50 leds -> indices  0..49
+// LEDs toujours depuis le debut du strip (index 0) :
+//   10 leds -> indices 0..9
+//   30 leds -> indices 0..29
+//   40 leds -> indices 0..39
+//   50 leds -> indices 0..49
 // =============================================================================
 #include <Arduino.h>
 #include <FastLED.h>
@@ -183,7 +184,7 @@ struct Config {
     }
     uint8_t  vitesseRainbow()const { return RAINBOW_SPEEDS[idxVitesseRainbow < 5 ? idxVitesseRainbow : 4]; }
     uint8_t  idxPattern()    const { return (patternActif == 0) ? patternSlot1 : patternSlot2; }
-    uint8_t  ledStart()      const { return (LED_COUNT_MAX - nbLeds()) / 2; }
+    uint8_t  ledStart()      const { return 0; }
 };
 
 Config cfg;

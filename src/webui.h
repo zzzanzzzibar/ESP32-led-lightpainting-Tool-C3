@@ -385,7 +385,7 @@ var nbLedsIdx = 2;
 var pointIdx  = 0;
 var posPoint  = 0;
 var pointColor= '#0000ff';
-var NB_LEDS_CHOICES = [10, 30, 50];
+var NB_LEDS_CHOICES = [10, 30, 40, 50];
 var TAILLE_POINT    = [1, 10, 30, 50];
 // Valeurs en attente pour patternSlot1/2 (arrivées avant fillPatterns)
 var pendingSlot1 = null;
@@ -543,8 +543,8 @@ function updateVisuPoint(){
   var nbLeds  = NB_LEDS_CHOICES[nbLedsIdx];
   var tp      = TAILLE_POINT[pointIdx];
   if(tp>nbLeds) tp=nbLeds;
-  var barStart= Math.floor((50-nbLeds)/2);
-  var barEnd  = barStart+nbLeds;
+  var barStart= 0;
+  var barEnd  = nbLeds;
   var zones=[];
   if(posPoint===0){
     var c=Math.floor(barStart+nbLeds/2);
