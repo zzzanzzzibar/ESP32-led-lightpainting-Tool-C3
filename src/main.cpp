@@ -66,7 +66,7 @@ static const uint8_t BRIGHTNESS_LEVELS[7] = { 3, 13, 26, 64, 128, 204, 255 };
 #define NB_LUM_LEVELS 7
 
 // Choix valides pour le nombre de LEDs
-static const uint8_t NB_LEDS_CHOICES[3] = { 10, 30, 50 };
+static const uint8_t NB_LEDS_CHOICES[4] = { 10, 30, 40, 50 };
 
 // Paliers de frequence clignotement (periodes en MICROSECONDES)
 //   idx 0 = Fix    (pas de clignotement, toujours allume)
@@ -84,7 +84,7 @@ static const uint8_t RAINBOW_SPEEDS[5] = { 1, 3, 5, 10, 20 };
 
 // Positions du point : 0=centre  1=gauche  2=droite  3=deux cotes
 // (taille en nb de LEDs configurable dans les reglages communs)
-// Taille du point : identique a idxNbLeds (partage les 3 choix 10/30/50)
+// Taille du point : identique a idxNbLeds (partage les 4 choix 10/30/40/50)
 // mais on garde un indice separe pour permettre une taille independante
 static const uint8_t TAILLE_POINT_CHOICES[4] = { 1, 10, 30, 50 };
 
@@ -137,7 +137,7 @@ struct Config {
     // Luminosite : indice 0-6 dans BRIGHTNESS_LEVELS (defaut = 4 -> 50%)
     uint8_t  niveauLuminosite  = 4;
 
-    // Nb LEDs : indice 0-2 dans NB_LEDS_CHOICES (defaut = 2 -> 50)
+    // Nb LEDs : indice 0-3 dans NB_LEDS_CHOICES (defaut = 2 -> 40)
     uint8_t  idxNbLeds         = 2;
 
     uint8_t  animation         = ANIM_STATIQUE;
@@ -166,7 +166,7 @@ struct Config {
     bool     patternDefilant   = true;
 
     // --- helpers ---
-    uint8_t  nbLeds()        const { return NB_LEDS_CHOICES[idxNbLeds < 3 ? idxNbLeds : 2]; }
+    uint8_t  nbLeds()        const { return NB_LEDS_CHOICES[idxNbLeds < 4 ? idxNbLeds : 3]; }
     uint8_t  intensite()     const { return BRIGHTNESS_LEVELS[niveauLuminosite < NB_LUM_LEVELS ? niveauLuminosite : NB_LUM_LEVELS-1]; }
     uint8_t  taillePoint()   const { return TAILLE_POINT_CHOICES[idxTaillePoint < 4 ? idxTaillePoint : 0]; }
     // Retourne la periode en µs pour Btn1 en mode Expert ; 0 = Fix
@@ -1104,7 +1104,7 @@ void setupServer() {
             }
             if (doc["idxNbLeds"].is<int>()) {
                 uint8_t v = doc["idxNbLeds"];
-                if (v < 3) { cfg.idxNbLeds = v; resetAnim(); }
+                if (v < 4) { cfg.idxNbLeds = v; resetAnim(); }
             }
             if (doc["animation"].is<int>()) {
                 cfg.animation = doc["animation"];
