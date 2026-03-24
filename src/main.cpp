@@ -90,14 +90,9 @@ static const uint8_t RAINBOW_SPEEDS[5] = { 1, 3, 5, 10, 20 };
 static const uint8_t TAILLE_POINT_CHOICES[4] = { 1, 10, 30, 50 };
 
 // -----------------------------------------------------------------------------
-// PATTERNS PREDEFINIS  (5 patterns, donnees sur 10 cellules, repeatable)
-// 0=off  1=C1  2=C2
-//
-//  "Tirets"  : - - _ _ - - _ _    alternance courte C1
-//  "Pointilles" : - _ _ _ - _ _ _ motif fin
-//  "Cercle"  : _ - - - - - - - - _  plein sauf bords (simule arc)
-//  "Fleche"  : _ _ _ - - - - _ _    pointe vers droite
-//  "Zebra"   : - _ - _ - _ - _ - _  alternance stricte C1/C2
+// PATTERNS PREDEFINIS  (0=off  1=C1  2=C2)
+// data[] = sequence de colonnes repeatable sur toute la largeur du strip.
+// len    = nombre de colonnes utiles (le reste de data[] est ignore).
 // -----------------------------------------------------------------------------
 struct PatternPredef {
     const char* nom;
@@ -106,11 +101,26 @@ struct PatternPredef {
 };
 
 static const PatternPredef PATTERNS[] = {
+    // 0 — Tirets courts C1
     { "Tirets",      4,  {1,1,0,0, 0,0,0,0,0,0} },
+    // 1 — Pointilles fins C1
     { "Pointilles",  4,  {1,0,0,0, 0,0,0,0,0,0} },
-    { "Cercle",     10,  {0,1,1,1, 1,1,1,1,1,0} },
+    // 2 — Hachures : diagonale sur 8 cols (valeur = position LED dans la col — rendu special)
+    { "Hachures",    8,  {1,1,1,1, 1,1,1,1,0,0} },
+    // 3 — Croix : 1 col pleine C1, 4 vides, 1 col pleine C1
+    { "Croix",       6,  {1,0,0,0, 0,1,0,0,0,0} },
+    // 4 — Barres doubles C1 + C2
+    { "Barres 2",    6,  {1,1,0,0, 2,2,0,0,0,0} },
+    // 5 — Zebra strict C1/C2
+    { "Zebre",       2,  {1,2,0,0, 0,0,0,0,0,0} },
+    // 6 — Damier : cols alternees C1/C2
+    { "Damier",      4,  {1,0,2,0, 0,0,0,0,0,0} },
+    // 7 — Eclairs : courtes rafales
+    { "Eclairs",     6,  {1,1,1,0, 0,0,0,0,0,0} },
+    // 8 — Fleche
     { "Fleche",     10,  {0,0,0,1, 1,1,1,0,0,0} },
-    { "Zebra",       2,  {1,2,0,0, 0,0,0,0,0,0} },
+    // 9 — Plein C1
+    { "Plein",       1,  {1,0,0,0, 0,0,0,0,0,0} },
 };
 static const uint8_t NB_PATTERNS = sizeof(PATTERNS) / sizeof(PatternPredef);
 
@@ -121,11 +131,12 @@ enum Animation {
     ANIM_STATIQUE = 0,
     ANIM_ARC_EN_CIEL,
     ANIM_PATTERN,
+    ANIM_PULSE,     // centre -> expand -> contract (dynamique)
     ANIM_COUNT
 };
 
 static const char* NOM_ANIMATIONS[] = {
-    "STATIQUE", "ARC_EN_CIEL", "PATTERN"
+    "STATIQUE", "ARC_EN_CIEL", "PATTERN", "PULSE"
 };
 
 // -----------------------------------------------------------------------------
@@ -1058,6 +1069,22 @@ void updateAnimation() {
                 }
                 needShow = true;
             }
+            break;
+        }
+
+        case ANIM_PULSE: {
+            // patternOffset = rayon courant (0 = juste le centre)
+            if (now - animDerniereMs < cfg.patternVitesse) break;
+            animDerniereMs = now;
+            for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
+            uint8_t centre = start + n / 2;
+            uint8_t radius = patternOffset % (n / 2 + 1);
+            uint8_t lo = (centre >= radius) ? centre - radius : start;
+            uint8_t hi = min((uint8_t)(centre + radius), (uint8_t)(start + n - 1));
+            for (uint8_t i = lo; i <= hi; i++) leds[i] = couleur1();
+            patternOffset++;
+            if (patternOffset > n / 2) patternOffset = 0;  // boucle
+            needShow = true;
             break;
         }
     }
