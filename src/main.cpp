@@ -184,7 +184,7 @@ static const char* NOM_ANIMATIONS[] = {
 };
 #define NB_RAINBOW_MODES 5
 static const char* NOM_RAINBOW[] = {
-    "SCROLL", "MIROIR", "INVERSE", "COMETE", "STROBE"
+    "SPLIT", "MIROIR", "INVERSE", "BLOCS", "STROBE"
 };
 
 // -----------------------------------------------------------------------------
@@ -1237,11 +1237,15 @@ void updateAnimation() {
 
             switch (cfg.idxRainbowMode % NB_RAINBOW_MODES) {
 
-                case 0: // SCROLL — roue complète défile vers la droite
+                case 0: // SPLIT — moitié gauche défile dans un sens, droite dans l'autre
                     animHue += 3;
-                    for (uint8_t i = 0; i < n; i++)
-                        if (i % cfg.densite == 0)
-                            leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n-1, 0, 255)), 255, 255);
+                    for (uint8_t i = 0; i < n; i++) {
+                        if (i % cfg.densite != 0) continue;
+                        if (i < n / 2)
+                            leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n/2-1, 0, 255)), 255, 255);
+                        else
+                            leds[start + i] = CHSV((uint8_t)(animHue + map(i, n/2, n-1, 255, 0)), 255, 255);
+                    }
                     break;
 
                 case 1: // MIROIR — roue symétrique centre→bords (hue miroir)
@@ -1260,19 +1264,16 @@ void updateAnimation() {
                             leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n-1, 255, 0)), 255, 255);
                     break;
 
-                case 3: // COMETE — un pixel coloré court avec traîne blanche décroissante
+                case 3: // BLOCS — 5 bandes de couleur unie avec décalage de phase
                 {
-                    animHue += 4;
-                    uint8_t head = patternOffset % n;
-                    // Traîne : 8 pixels de blanc décroissant derrière la tête
-                    for (uint8_t t = 0; t < 8 && head >= t; t++) {
-                        uint8_t pos = head - t;
-                        uint8_t bright = 255 - t * 30;
-                        leds[start + pos] = CRGB(bright, bright, bright);
+                    animHue += 2;
+                    uint8_t nbBlocs = 5;
+                    for (uint8_t i = 0; i < n; i++) {
+                        if (i % cfg.densite != 0) continue;
+                        uint8_t bloc = (uint8_t)((uint16_t)i * nbBlocs / n);
+                        uint8_t phaseBloc = bloc * (255 / nbBlocs);
+                        leds[start + i] = CHSV((uint8_t)(animHue + phaseBloc), 255, 255);
                     }
-                    // Tête : couleur vive
-                    leds[start + head] = CHSV(animHue, 255, 255);
-                    patternOffset++;
                     break;
                 }
 
