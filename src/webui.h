@@ -256,7 +256,6 @@ select:focus{border-color:#555}
     <div class="mode-tab active" id="tab-0" onclick="setAnim(0)">Statique</div>
     <div class="mode-tab"        id="tab-1" onclick="setAnim(1)">Rainbow</div>
     <div class="mode-tab"        id="tab-2" onclick="setAnim(2)">Pattern</div>
-    <div class="mode-tab"        id="tab-3" onclick="setAnim(3)">Pulse</div>
   </div>
 
   <!-- STATIQUE -->
@@ -488,7 +487,7 @@ function onDensite(val){
 // Modes
 function setAnim(idx){
   animIdx=idx;
-  for(var i=0;i<4;i++){
+  for(var i=0;i<3;i++){
     document.getElementById('tab-'+i).className='mode-tab'+(i===idx?' active':'');
     var sec=document.getElementById('sec-'+i);
     if(sec) sec.className='sec'+(i===idx?' vis':'');

@@ -157,6 +157,11 @@ static const PatternPredef PATTERNS[] = {
 { "Eclairs", 10,
   {1,1,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0} },
+
+// 10 — Pulse : animation dynamique centre->bords (len=255 = marqueur rendu special)
+{ "Pulse", 255,
+  {0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0} },
 };
 static const uint8_t NB_PATTERNS = sizeof(PATTERNS) / sizeof(PatternPredef);
 
@@ -167,12 +172,11 @@ enum Animation {
     ANIM_STATIQUE = 0,
     ANIM_ARC_EN_CIEL,
     ANIM_PATTERN,
-    ANIM_PULSE,     // centre -> expand -> contract (dynamique)
     ANIM_COUNT
 };
 
 static const char* NOM_ANIMATIONS[] = {
-    "STATIQUE", "ARC_EN_CIEL", "PATTERN", "PULSE"
+    "STATIQUE", "ARC_EN_CIEL", "PATTERN"
 };
 
 // -----------------------------------------------------------------------------
@@ -983,19 +987,38 @@ void lireBoutons() {
     if (modeExpert) {
         // =====================================================================
         // MODE EXPERT
-        // GPIO26 appui court = cycle animation
-        // GPIO27 hold        = pointeur (gere dans loop())
+        // GPIO26 appui court seul         = cycle animation
+        // GPIO25 hold + GPIO26 appui court = pattern suivant (si ANIM_PATTERN)
+        // GPIO27 hold                      = pointeur (gere dans loop())
         // =====================================================================
-        if (etatMode == LOW && etatPrecMode == HIGH
-            && (now - derniereMs26) > DEBOUNCE_MS) {
 
-            cfg.animation = (cfg.animation + 1) % ANIM_COUNT;
-            Serial.print(F("[MODE] ")); Serial.println(NOM_ANIMATIONS[cfg.animation]);
-            derniereMs26  = now;
-            feedbackActif = true;
-            feedbackMs    = now;
-            resetAnim();
-            if (!lumiereActive) { clearLeds(); needShow = true; }
+        bool modeAppuiFront = (etatMode == LOW && etatPrecMode == HIGH
+                               && (now - derniereMs26) > DEBOUNCE_MS);
+
+        if (modeAppuiFront) {
+            if (btn25 && cfg.animation == ANIM_PATTERN) {
+                // LUMIERE tenu + MODE appui = pattern suivant
+                uint8_t& slot = (cfg.patternActif == 0) ? cfg.patternSlot1 : cfg.patternSlot2;
+                slot = (slot + 1) % NB_PATTERNS;
+                resetAnim();
+                scheduleSave();
+                derniereMs26 = now;
+                Serial.print(F("[PATTERN] slot")); Serial.print(cfg.patternActif);
+                Serial.print(F("=")); Serial.println(PATTERNS[slot].nom);
+                // Flash cyan bref comme feedback
+                for (uint8_t i = 0; i < cfg.nbLeds(); i++) leds[cfg.ledStart() + i] = CRGB(0, 180, 180);
+                FastLED.show(); delay(80);
+                needShow = true;
+            } else if (!btn25) {
+                // MODE seul = cycle animation
+                cfg.animation = (cfg.animation + 1) % ANIM_COUNT;
+                Serial.print(F("[MODE] ")); Serial.println(NOM_ANIMATIONS[cfg.animation]);
+                derniereMs26  = now;
+                feedbackActif = true;
+                feedbackMs    = now;
+                resetAnim();
+                if (!lumiereActive) { clearLeds(); needShow = true; }
+            }
         }
 
     } else {
@@ -1095,6 +1118,23 @@ void updateAnimation() {
 
         case ANIM_PATTERN: {
             const PatternPredef& p = PATTERNS[cfg.idxPattern() % NB_PATTERNS];
+
+            // Pulse : pattern dynamique centre->bords (marqué par len==255)
+            if (p.len == 255) {
+                if (now - animDerniereMs < cfg.patternVitesse) break;
+                animDerniereMs = now;
+                for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
+                uint8_t centre = start + n / 2;
+                uint8_t radius = patternOffset % (n / 2 + 1);
+                uint8_t lo = (centre >= radius) ? centre - radius : start;
+                uint8_t hi = min((uint8_t)(centre + radius), (uint8_t)(start + n - 1));
+                for (uint8_t i = lo; i <= hi; i++) leds[i] = couleur1();
+                patternOffset++;
+                if (patternOffset > n / 2) patternOffset = 0;
+                needShow = true;
+                break;
+            }
+
             uint8_t plen = (p.len > 0) ? p.len : 1;
 
             if (cfg.patternDefilant) {
@@ -1120,22 +1160,6 @@ void updateAnimation() {
                 }
                 needShow = true;
             }
-            break;
-        }
-
-        case ANIM_PULSE: {
-            // patternOffset = rayon courant (0 = juste le centre)
-            if (now - animDerniereMs < cfg.patternVitesse) break;
-            animDerniereMs = now;
-            for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
-            uint8_t centre = start + n / 2;
-            uint8_t radius = patternOffset % (n / 2 + 1);
-            uint8_t lo = (centre >= radius) ? centre - radius : start;
-            uint8_t hi = min((uint8_t)(centre + radius), (uint8_t)(start + n - 1));
-            for (uint8_t i = lo; i <= hi; i++) leds[i] = couleur1();
-            patternOffset++;
-            if (patternOffset > n / 2) patternOffset = 0;  // boucle
-            needShow = true;
             break;
         }
     }
