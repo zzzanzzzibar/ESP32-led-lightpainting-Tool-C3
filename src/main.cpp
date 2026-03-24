@@ -896,15 +896,17 @@ void flashFeedbackSimple() {
 }
 
 // Feedback intensité mode simple : N LEDs blanches proportionnel au niveau
-// Niveau idx sur NB_LUM_LEVELS-1 → affiche (idx+1)*LED_COUNT_MAX/NB_LUM_LEVELS LEDs
+// Niveau idx sur NB_LUM_LEVELS-1 → allume (idx+1)/NB_LUM_LEVELS * nbLeds LEDs depuis ledStart
 void afficherFeedbackIntensite() {
     clearLeds();
     uint8_t idx = cfg.niveauLuminosite < NB_LUM_LEVELS ? cfg.niveauLuminosite : NB_LUM_LEVELS - 1;
-    // (idx+1) niveaux / 7 niveaux * 40 LEDs, arrondi
-    uint8_t nbAllumees = (uint8_t)(((uint16_t)(idx + 1) * LED_COUNT_MAX + NB_LUM_LEVELS / 2) / NB_LUM_LEVELS);
+    uint8_t barN   = cfg.nbLeds();    // nb LEDs actives (ex: 39)
+    uint8_t barSt  = cfg.ledStart();  // offset (ex: 0)
+    // (idx+1) / NB_LUM_LEVELS * barN, arrondi
+    uint8_t nbAllumees = (uint8_t)(((uint16_t)(idx + 1) * barN + NB_LUM_LEVELS / 2) / NB_LUM_LEVELS);
     if (nbAllumees < 1) nbAllumees = 1;
-    if (nbAllumees > LED_COUNT_MAX) nbAllumees = LED_COUNT_MAX;
-    for (uint8_t i = 0; i < nbAllumees; i++) leds[i] = CRGB::White;
+    if (nbAllumees > barN) nbAllumees = barN;
+    for (uint8_t i = 0; i < nbAllumees; i++) leds[barSt + i] = CRGB::White;
     needShow = true;
 }
 
