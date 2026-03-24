@@ -182,6 +182,10 @@ enum Animation {
 static const char* NOM_ANIMATIONS[] = {
     "STATIQUE", "ARC_EN_CIEL", "PATTERN"
 };
+#define NB_RAINBOW_MODES 5
+static const char* NOM_RAINBOW[] = {
+    "SCROLL", "MIROIR", "INVERSE", "COMETE", "STROBE"
+};
 
 // -----------------------------------------------------------------------------
 // CONFIG CENTRALE
@@ -211,6 +215,8 @@ struct Config {
 
     // Vitesse arc-en-ciel : indice 0-4 dans RAINBOW_SPEEDS (defaut=4 -> 20ms)
     uint8_t  idxVitesseRainbow = 4;
+    // Sous-mode arc-en-ciel : 0=scroll 1=miroir 2=inverse 3=comète 4=strobe
+    uint8_t  idxRainbowMode    = 0;
 
     // Point (GPIO27)
     uint8_t  idxTaillePoint    = 0;   // 0-3 dans TAILLE_POINT_CHOICES
@@ -270,6 +276,7 @@ void sauvegarderConfig() {
     prefs.putUChar("bfreqs",cfg.idxFreqBlinkSimple);
     prefs.putUChar("bfreq2",cfg.idxFreqBlinkC2);
     prefs.putUChar("rain", cfg.idxVitesseRainbow);
+    prefs.putUChar("rainm",cfg.idxRainbowMode);
     prefs.putUChar("ptsz", cfg.idxTaillePoint);
     prefs.putUChar("ptps", cfg.posPoint);
     prefs.putUChar("ps1",  cfg.patternSlot1);
@@ -304,6 +311,7 @@ void chargerConfig() {
     cfg.idxFreqBlinkSimple = prefs.getUChar("bfreqs",cfg.idxFreqBlinkSimple);
     cfg.idxFreqBlinkC2     = prefs.getUChar("bfreq2",cfg.idxFreqBlinkC2);
     cfg.idxVitesseRainbow  = prefs.getUChar("rain",cfg.idxVitesseRainbow);
+    cfg.idxRainbowMode     = prefs.getUChar("rainm",cfg.idxRainbowMode);
     cfg.idxTaillePoint     = prefs.getUChar("ptsz",cfg.idxTaillePoint);
     cfg.posPoint           = prefs.getUChar("ptps",cfg.posPoint);
     cfg.patternSlot1       = prefs.getUChar("ps1", cfg.patternSlot1);
@@ -1049,7 +1057,8 @@ void lireBoutons() {
         // GPIO26 appui court seul          = cycle animation
         // GPIO25 hold + GPIO26 appui court = pattern suivant (si ANIM_PATTERN)
         //                                  = cycle intensité (autres animations)
-        // GPIO27 hold                      = pointeur (gere dans loop())
+        // GPIO25 hold + GPIO27 appui court = cycle sous-mode rainbow (si ANIM_ARC_EN_CIEL)
+        // GPIO27 hold seul                 = pointeur (gere dans loop())
         // =====================================================================
 
         bool modeAppuiFront = (etatMode == LOW && etatPrecMode == HIGH
@@ -1087,6 +1096,31 @@ void lireBoutons() {
                 feedbackMs    = now;
                 resetAnim();
                 if (!lumiereActive) { clearLeds(); needShow = true; }
+            }
+        }
+
+        // --- Combo GPIO25+GPIO27 appui court : cycle sous-mode rainbow ---
+        // (seulement si ANIM_ARC_EN_CIEL actif ; sinon GPIO27 seul = pointeur géré dans loop)
+        {
+            static bool btn27PrecExpert = false;
+            bool btn27Front27 = (btn25 && btn27 && !btn26
+                                 && !btn27PrecExpert
+                                 && (now - dernierMs27Simple) > DEBOUNCE_MS);
+            btn27PrecExpert = (btn25 && btn27 && !btn26);
+            if (btn27Front27 && cfg.animation == ANIM_ARC_EN_CIEL) {
+                cfg.idxRainbowMode = (cfg.idxRainbowMode + 1) % NB_RAINBOW_MODES;
+                scheduleSave();
+                dernierMs27Simple = now;
+                Serial.print(F("[EXPERT] Rainbow=")); Serial.println(NOM_RAINBOW[cfg.idxRainbowMode]);
+                // Feedback : N+1 flashes rapides couleur arc-en-ciel
+                for (uint8_t k = 0; k <= cfg.idxRainbowMode; k++) {
+                    uint8_t nb = cfg.nbLeds();
+                    for (uint8_t i = 0; i < nb; i++)
+                        leds[cfg.ledStart()+i] = CHSV(map(k, 0, NB_RAINBOW_MODES-1, 0, 200), 255, 255);
+                    FastLED.show(); delay(70);
+                    clearLeds(); FastLED.show(); delay(50);
+                }
+                needShow = true;
             }
         }
 
@@ -1199,11 +1233,55 @@ void updateAnimation() {
         case ANIM_ARC_EN_CIEL: {
             if (now - animDerniereMs < cfg.vitesseRainbow()) break;
             animDerniereMs = now;
-            animHue += 2;
             for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
-            for (uint8_t i = 0; i < n; i++) {
-                if (i % cfg.densite == 0)
-                    leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n-1, 0, 255)), 255, 255);
+
+            switch (cfg.idxRainbowMode % NB_RAINBOW_MODES) {
+
+                case 0: // SCROLL — roue complète défile vers la droite
+                    animHue += 3;
+                    for (uint8_t i = 0; i < n; i++)
+                        if (i % cfg.densite == 0)
+                            leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n-1, 0, 255)), 255, 255);
+                    break;
+
+                case 1: // MIROIR — roue symétrique centre→bords (hue miroir)
+                    animHue += 3;
+                    for (uint8_t i = 0; i < n; i++) {
+                        if (i % cfg.densite != 0) continue;
+                        uint8_t dist = (i < n/2) ? (n/2 - i) : (i - n/2);
+                        leds[start + i] = CHSV((uint8_t)(animHue + map(dist, 0, n/2, 0, 255)), 255, 255);
+                    }
+                    break;
+
+                case 2: // INVERSE — roue défile vers la gauche
+                    animHue -= 3;
+                    for (uint8_t i = 0; i < n; i++)
+                        if (i % cfg.densite == 0)
+                            leds[start + i] = CHSV((uint8_t)(animHue + map(i, 0, n-1, 255, 0)), 255, 255);
+                    break;
+
+                case 3: // COMETE — un pixel coloré court avec traîne blanche décroissante
+                {
+                    animHue += 4;
+                    uint8_t head = patternOffset % n;
+                    // Traîne : 8 pixels de blanc décroissant derrière la tête
+                    for (uint8_t t = 0; t < 8 && head >= t; t++) {
+                        uint8_t pos = head - t;
+                        uint8_t bright = 255 - t * 30;
+                        leds[start + pos] = CRGB(bright, bright, bright);
+                    }
+                    // Tête : couleur vive
+                    leds[start + head] = CHSV(animHue, 255, 255);
+                    patternOffset++;
+                    break;
+                }
+
+                case 4: // STROBE — toute la barre change de teinte d'un coup
+                    animHue += 15;
+                    for (uint8_t i = 0; i < n; i++)
+                        if (i % cfg.densite == 0)
+                            leds[start + i] = CHSV(animHue, 255, 255);
+                    break;
             }
             needShow = true;
             break;
