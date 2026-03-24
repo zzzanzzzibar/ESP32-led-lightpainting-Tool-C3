@@ -52,6 +52,14 @@ input[type=range]{flex:1;accent-color:#aaa;min-width:0;opacity:.8}
 input[type=color]{width:52px;height:38px;border:1px solid #333;border-radius:8px;
   cursor:pointer;background:#212121;padding:2px}
 
+.pairs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:4px}
+.pair-btn{display:flex;flex-direction:column;gap:2px;cursor:pointer;border-radius:8px;
+  padding:3px;border:2px solid transparent;transition:border-color .15s}
+.pair-btn:hover{border-color:#555}
+.pair-btn.active{border-color:#aaa}
+.pair-swatch{height:22px;border-radius:5px;width:100%}
+.pair-label{font-size:.58em;color:#555;text-align:center;line-height:1.1;padding:0 1px}
+
 select{background:#212121;color:#ccc;border:1px solid #333;border-radius:7px;
   padding:6px 10px;font-size:.88em;flex:1;outline:none}
 select:focus{border-color:#555}
@@ -237,7 +245,10 @@ select:focus{border-color:#555}
 <!-- ======== COULEURS ======== -->
 <div class="card">
   <h2>Couleurs</h2>
-  <div class="color-row">
+  <!-- Paires complémentaires : cliquer applique C1+C2 ensemble -->
+  <div class="pairs-grid" id="pairs-grid"></div>
+  <!-- Pickers manuels -->
+  <div class="color-row" style="margin-top:10px">
     <div class="color-box">
       <input type="color" id="c1" value="#ff0000" oninput="onC1()">
       <span>C1 — base</span>
@@ -462,17 +473,62 @@ function setLum(idx){
   send({niveauLuminosite:idx});
 }
 
+// Couleurs — paires complémentaires (doit correspondre à SIMPLE_COULEURS dans main.cpp)
+var COLOR_PAIRS=[
+  [[255, 32,  0],[  0,232,255],'Rouge','Cyan'],
+  [[255, 96,  0],[  0, 80,255],'Orange','Bleu'],
+  [[255,224,  0],[128,  0,255],'Jaune','Violet'],
+  [[ 64,255,  0],[255,  0,192],'Vert','Magenta'],
+  [[  0,255,200],[255,  0, 85],'Menthe','Rose'],
+  [[255,232,192],[192,232,255],'Chaud','Froid'],
+  [[255,  0,128],[  0,255,128],'Framboise','Menthe'],
+  [[255,160,  0],[ 80,  0,255],'Ambre','Indigo'],
+  [[  0,200,255],[255,100,  0],'Ciel','Brûlé'],
+  [[200,  0,255],[100,255,  0],'Violet','Chartreuse'],
+  [[255,255,255],[255, 80,  0],'Blanc','Feu'],
+  [[  0,255, 64],[255,  0,200],'Émeraude','Fuchsia'],
+];
+var activePairIdx=-1;
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(function(v){return('0'+v.toString(16)).slice(-2)}).join('');}
+function buildPairsGrid(){
+  var g=document.getElementById('pairs-grid'); if(!g)return;
+  g.innerHTML='';
+  COLOR_PAIRS.forEach(function(p,i){
+    var c1=p[0],c2=p[1],n1=p[2],n2=p[3];
+    var btn=document.createElement('div');
+    btn.className='pair-btn'+(i===activePairIdx?' active':'');
+    btn.innerHTML='<div class="pair-swatch" style="background:'+rgbToHex(c1[0],c1[1],c1[2])+'"></div>'
+                 +'<div class="pair-swatch" style="background:'+rgbToHex(c2[0],c2[1],c2[2])+'"></div>'
+                 +'<div class="pair-label">'+n1+'<br>'+n2+'</div>';
+    btn.onclick=(function(idx,c1,c2){return function(){
+      activePairIdx=idx;
+      buildPairsGrid();
+      var h1=rgbToHex(c1[0],c1[1],c1[2]);
+      var h2=rgbToHex(c2[0],c2[1],c2[2]);
+      document.getElementById('c1').value=h1;
+      document.getElementById('c2').value=h2;
+      if(document.getElementById('c1-s'))document.getElementById('c1-s').value=h1;
+      pointColor=h2; updateVisuPoint();
+      send({r1:c1[0],g1:c1[1],b1:c1[2],r2:c2[0],g2:c2[1],b2:c2[2]});
+    };})(i,c1,c2);
+    g.appendChild(btn);
+  });
+}
+
 // Couleurs
 function onC1Simple(){
+  activePairIdx=-1; buildPairsGrid();
   var x=hexRgb(document.getElementById('c1-s').value);
   document.getElementById('c1').value=document.getElementById('c1-s').value;
   send({r1:x.r,g1:x.g,b1:x.b});
 }
 function onC1(){
+  activePairIdx=-1; buildPairsGrid();
   document.getElementById('c1-s').value=document.getElementById('c1').value;
   var x=hexRgb(document.getElementById('c1').value);send({r1:x.r,g1:x.g,b1:x.b});
 }
 function onC2(){
+  activePairIdx=-1; buildPairsGrid();
   pointColor=document.getElementById('c2').value;
   var x=hexRgb(pointColor);
   send({r2:x.r,g2:x.g,b2:x.b}); updateVisuPoint();
@@ -579,6 +635,13 @@ function applyState(s){
   document.getElementById('c1-s').value=toHex(s.r1,s.g1,s.b1);
   document.getElementById('c2').value=toHex(s.r2,s.g2,s.b2);
   pointColor=toHex(s.r2,s.g2,s.b2);
+  // Retrouver la paire active si C1+C2 correspondent
+  activePairIdx=-1;
+  COLOR_PAIRS.forEach(function(p,i){
+    if(p[0][0]===s.r1&&p[0][1]===s.g1&&p[0][2]===s.b1&&
+       p[1][0]===s.r2&&p[1][1]===s.g2&&p[1][2]===s.b2) activePairIdx=i;
+  });
+  buildPairsGrid();
 
   if(s.idxNbLeds!==undefined){ nbLedsIdx=s.idxNbLeds; setActiveBtn('grp-leds',nbLedsIdx); setActiveBtn('grp-leds-s',nbLedsIdx); }
   if(s.niveauLuminosite!==undefined){ setActiveBtn('grp-lum',s.niveauLuminosite); setActiveBtn('grp-lum-s',s.niveauLuminosite); }
@@ -626,6 +689,7 @@ function poll(){
   fetch('/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
 }
 setInterval(poll,500);
+buildPairsGrid();
 poll();
 
 // ---- Presets ----

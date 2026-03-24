@@ -437,19 +437,26 @@ uint32_t feedbackMs     = 0;
 // -----------------------------------------------------------------------------
 // MODE SIMPLE — navigation physique
 // -----------------------------------------------------------------------------
-// Palette de couleurs fixes cyclables via GPIO26 (appui court)
-// Format : {R, G, B}
-static const uint8_t SIMPLE_COULEURS[][3] = {
-    {255,   0,   0},  // 0 Rouge
-    {255, 100,   0},  // 1 Orange
-    {255, 255,   0},  // 2 Jaune
-    {  0, 255,   0},  // 3 Vert
-    {  0, 255, 255},  // 4 Cyan
-    {  0,   0, 255},  // 5 Bleu
-    {255,   0, 255},  // 6 Magenta
-    {255, 255, 255},  // 7 Blanc
+// Palette de 12 couleurs organisées en 6 paires complémentaires pour light painting
+// Chaque paire {C1, C2} : couleur principale + sa complémentaire artistique
+// Navigation : GPIO26 cycle C1 et applique automatiquement la C2 de la paire
+// Format : {{R1,G1,B1}, {R2,G2,B2}}
+static const uint8_t SIMPLE_COULEURS[12][2][3] = {
+    // C1                  C2 complémentaire
+    {{255,  32,   0},  {  0, 232, 255}},  //  0 Rouge chaud     ↔ Cyan froid
+    {{255,  96,   0},  {  0,  80, 255}},  //  1 Orange          ↔ Bleu électrique
+    {{255, 224,   0},  {128,   0, 255}},  //  2 Jaune           ↔ Violet
+    {{ 64, 255,   0},  {255,   0, 192}},  //  3 Vert lime       ↔ Magenta
+    {{  0, 255, 200},  {255,   0,  85}},  //  4 Cyan menthe     ↔ Rose vif
+    {{255, 232, 192},  {192, 232, 255}},  //  5 Blanc chaud     ↔ Blanc froid
+    {{255,   0, 128},  {  0, 255, 128}},  //  6 Rose framboise  ↔ Vert menthe
+    {{255, 160,   0},  { 80,   0, 255}},  //  7 Ambre           ↔ Indigo
+    {{  0, 200, 255},  {255, 100,   0}},  //  8 Bleu ciel       ↔ Orange brûlé
+    {{200,   0, 255},  {100, 255,   0}},  //  9 Violet          ↔ Vert chartreuse
+    {{255, 255, 255},  {255,  80,   0}},  // 10 Blanc pur       ↔ Orange feu
+    {{  0, 255,  64},  {255,   0, 200}},  // 11 Vert émeraude   ↔ Fuchsia
 };
-#define NB_SIMPLE_COULEURS 8
+#define NB_SIMPLE_COULEURS 12
 
 uint8_t  simpleCouleurIdx  = 0;  // indice courant dans SIMPLE_COULEURS
 
@@ -1053,16 +1060,21 @@ void lireBoutons() {
             && etatMode == LOW && etatPrecMode == HIGH) {
 
             simpleCouleurIdx = (simpleCouleurIdx + 1) % NB_SIMPLE_COULEURS;
-            cfg.r1 = SIMPLE_COULEURS[simpleCouleurIdx][0];
-            cfg.g1 = SIMPLE_COULEURS[simpleCouleurIdx][1];
-            cfg.b1 = SIMPLE_COULEURS[simpleCouleurIdx][2];
+            // Appliquer C1 et C2 de la paire complémentaire
+            cfg.r1 = SIMPLE_COULEURS[simpleCouleurIdx][0][0];
+            cfg.g1 = SIMPLE_COULEURS[simpleCouleurIdx][0][1];
+            cfg.b1 = SIMPLE_COULEURS[simpleCouleurIdx][0][2];
+            cfg.r2 = SIMPLE_COULEURS[simpleCouleurIdx][1][0];
+            cfg.g2 = SIMPLE_COULEURS[simpleCouleurIdx][1][1];
+            cfg.b2 = SIMPLE_COULEURS[simpleCouleurIdx][1][2];
             sauvegarderConfig();
-            Serial.print(F("[SIMPLE] Couleur idx=")); Serial.println(simpleCouleurIdx);
-            // Feedback : allumer brievement les leds avec la nouvelle couleur
+            Serial.print(F("[SIMPLE] Paire idx=")); Serial.println(simpleCouleurIdx);
+            // Feedback : moitié gauche C1, moitié droite C2
             uint8_t n  = cfg.nbLeds();
             uint8_t st = cfg.ledStart();
-            for (uint8_t i = 0; i < n; i++) leds[st + i] = couleur1();
-            FastLED.show(); delay(120);
+            for (uint8_t i = 0; i < n / 2; i++) leds[st + i] = couleur1();
+            for (uint8_t i = n / 2; i < n; i++) leds[st + i] = couleur2();
+            FastLED.show(); delay(200);
             if (!lumiereActive) { clearLeds(); FastLED.show(); }
             dernierMs26Simple = now;
         }
