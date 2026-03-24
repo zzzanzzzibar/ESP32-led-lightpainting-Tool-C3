@@ -91,36 +91,72 @@ static const uint8_t TAILLE_POINT_CHOICES[4] = { 1, 10, 30, 50 };
 
 // -----------------------------------------------------------------------------
 // PATTERNS PREDEFINIS  (0=off  1=C1  2=C2)
-// data[] = sequence de colonnes repeatable sur toute la largeur du strip.
-// len    = nombre de colonnes utiles (le reste de data[] est ignore).
+// data[40] = état de chaque LED par position sur 39 LEDs.
+// len      = nombre de LEDs utiles (répété si strip plus long).
+// Mode défilant : le pattern scroll dans le temps (offset avance).
+// Mode statique : le pattern est affiché tel quel (snap).
 // -----------------------------------------------------------------------------
 struct PatternPredef {
     const char* nom;
     uint8_t     len;
-    uint8_t     data[10];
+    uint8_t     data[40];
 };
 
+// Helpers d'initialisation lisibles (n = cfg.nbLeds() = 39 par défaut)
+// On encode pour 39 LEDs ; le renderer répète si n < len.
+
 static const PatternPredef PATTERNS[] = {
-    // 0 — Tirets courts C1
-    { "Tirets",      4,  {1,1,0,0, 0,0,0,0,0,0} },
-    // 1 — Pointilles fins C1
-    { "Pointilles",  4,  {1,0,0,0, 0,0,0,0,0,0} },
-    // 2 — Hachures : diagonale sur 8 cols (valeur = position LED dans la col — rendu special)
-    { "Hachures",    8,  {1,1,1,1, 1,1,1,1,0,0} },
-    // 3 — Croix : 1 col pleine C1, 4 vides, 1 col pleine C1
-    { "Croix",       6,  {1,0,0,0, 0,1,0,0,0,0} },
-    // 4 — Barres doubles C1 + C2
-    { "Barres 2",    6,  {1,1,0,0, 2,2,0,0,0,0} },
-    // 5 — Zebra strict C1/C2
-    { "Zebre",       2,  {1,2,0,0, 0,0,0,0,0,0} },
-    // 6 — Damier : cols alternees C1/C2
-    { "Damier",      4,  {1,0,2,0, 0,0,0,0,0,0} },
-    // 7 — Eclairs : courtes rafales
-    { "Eclairs",     6,  {1,1,1,0, 0,0,0,0,0,0} },
-    // 8 — Fleche
-    { "Fleche",     10,  {0,0,0,1, 1,1,1,0,0,0} },
-    // 9 — Plein C1
-    { "Plein",       1,  {1,0,0,0, 0,0,0,0,0,0} },
+// 0 — Tirets : 2 allumées, 4 éteintes (C1) — rythme spatial
+{ "Tirets", 6,
+  {1,1,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0} },
+
+// 1 — Pointillés : 1 allumée, 5 éteintes
+{ "Pointilles", 6,
+  {1,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0} },
+
+// 2 — Triangle montant : de 1 LED au centre vers les bords (symétrique)
+//     LED 0=bord gauche, 19=centre, 38=bord droit
+{ "Triangle", 39,
+  {0,0,0,0,0,1,0,0,0,0, 1,0,0,0,1,0,0,0,1,1,
+   1,1,0,0,0,1,0,0,0,1, 0,0,0,0,1,0,0,0,0,0} },
+
+// 3 — Croix : barre pleine C1 au milieu + bords C2
+{ "Croix", 39,
+  {2,0,0,0,0,0,0,0,0,1, 1,1,1,1,1,1,1,1,1,1,
+   1,1,1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0,0,2} },
+
+// 4 — Onde sinusoïde : une LED allumée par position, position varie sinusoïdalement
+//     (on encode la position allumée : toutes à 0 sauf la LED de la "vague")
+//     Ici on encode l'onde comme bandes : tiers bas C2, tiers milieu off, tiers haut C1
+{ "Sinus", 39,
+  {2,2,2,2,2,2,2,2,2,2, 2,2,2,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,1,1,1,1, 1,1,1,1,1,1,1,1,1,0} },
+
+// 5 — Zèbre C1/C2 : alternance stricte LED par LED
+{ "Zebre", 2,
+  {1,2, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0} },
+
+// 6 — Damier large : 3 C1, 3 C2
+{ "Damier", 6,
+  {1,1,1,2,2,2, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0,
+   0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0} },
+
+// 7 — Barres doubles : tiers bas C2, tiers haut C1, tiers milieu off
+{ "Barres 2", 39,
+  {2,2,2,2,2,2,2,2,2,2, 2,2,2,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,1,1,1,1, 1,1,1,1,1,1,1,1,1,0} },
+
+// 8 — Hachures diagonales : la LED allumée avance d'une position à chaque colonne
+//     Rendu spécial : on active LED (i % n) — c'est une ligne diagonale dans le spacetime
+{ "Hachures", 39,
+  {1,0,0,0,0,0,0,0,0,0, 0,1,0,0,0,0,0,0,0,0,
+   0,0,1,0,0,0,0,0,0,0, 0,0,0,1,0,0,0,0,0,0} },
+
+// 9 — Eclairs : rafales C1 courtes séparées par silence
+{ "Eclairs", 10,
+  {1,1,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0} },
 };
 static const uint8_t NB_PATTERNS = sizeof(PATTERNS) / sizeof(PatternPredef);
 
@@ -608,6 +644,21 @@ void setup() {
     FastLED.clear();
     FastLED.show();
 
+    // Chenillard rainbow de démarrage
+    {
+        uint8_t nb = cfg.nbLeds();
+        for (uint8_t pass = 0; pass < 2; pass++) {
+            for (uint8_t i = 0; i < nb; i++) {
+                FastLED.clear();
+                leds[i] = CHSV((uint8_t)(i * 255 / nb + pass * 128), 255, 200);
+                FastLED.show();
+                delay(18);
+            }
+        }
+        FastLED.clear();
+        FastLED.show();
+    }
+
     pinMode(PIN_LUMIERE,  INPUT_PULLUP);
     pinMode(PIN_MODE,     INPUT_PULLUP);
     pinMode(PIN_POINTEUR, INPUT_PULLUP);
@@ -1047,6 +1098,7 @@ void updateAnimation() {
             uint8_t plen = (p.len > 0) ? p.len : 1;
 
             if (cfg.patternDefilant) {
+                // Mode défilant : toutes les LEDs allumées selon data[], le pattern scroll
                 if (now - animDerniereMs < cfg.patternVitesse) break;
                 animDerniereMs = now;
                 for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
@@ -1059,8 +1111,7 @@ void updateAnimation() {
                 patternOffset = (patternOffset + 1) % plen;
                 needShow = true;
             } else {
-                if (animEtatBlink) break;
-                animEtatBlink = true;
+                // Mode statique : affiche le pattern une seule fois, centré sur la barre
                 for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
                 for (uint8_t i = 0; i < n; i++) {
                     uint8_t val = p.data[i % plen];
