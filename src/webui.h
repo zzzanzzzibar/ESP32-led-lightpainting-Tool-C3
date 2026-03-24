@@ -476,20 +476,20 @@ function setLum(idx){
   send({niveauLuminosite:idx});
 }
 
-// Couleurs — paires complémentaires (doit correspondre à SIMPLE_COULEURS dans main.cpp)
+// Couleurs — doit correspondre exactement à SIMPLE_COULEURS dans main.cpp
 var COLOR_PAIRS=[
-  [[255, 32,  0],[  0,232,255],'Rouge','Cyan'],
-  [[255, 96,  0],[  0, 80,255],'Orange','Bleu'],
-  [[255,224,  0],[128,  0,255],'Jaune','Violet'],
-  [[ 64,255,  0],[255,  0,192],'Vert','Magenta'],
-  [[  0,255,200],[255,  0, 85],'Menthe','Rose'],
-  [[255,232,192],[192,232,255],'Chaud','Froid'],
-  [[255,  0,128],[  0,255,128],'Framboise','Menthe'],
-  [[255,160,  0],[ 80,  0,255],'Ambre','Indigo'],
-  [[  0,200,255],[255,100,  0],'Ciel','Brûlé'],
-  [[200,  0,255],[100,255,  0],'Violet','Chartreuse'],
-  [[255,255,255],[255, 80,  0],'Blanc','Feu'],
-  [[  0,255, 64],[255,  0,200],'Émeraude','Fuchsia'],
+  [[255,  0,  0],[  0,255,255],'Rouge','Cyan'],
+  [[255, 64,  0],[  0,191,255],'R-Orange','Bleu ciel'],
+  [[255,140,  0],[  0,115,255],'Orange','Bleu élec.'],
+  [[255,220,  0],[ 35,  0,255],'J-Orange','Bleu-Violet'],
+  [[180,255,  0],[ 75,  0,255],'J-Vert','Violet'],
+  [[  0,255,  0],[255,  0,255],'Vert','Magenta'],
+  [[  0,255,128],[255,  0,128],'V-Menthe','Rose'],
+  [[  0,255,255],[255,  0,  0],'Cyan','Rouge'],
+  [[  0,128,255],[255,128,  0],'Bleu ciel','Orange'],
+  [[  0,  0,255],[255,220,  0],'Bleu','Jaune'],
+  [[128,  0,255],[128,255,  0],'Violet','Chartreuse'],
+  [[255,  0,255],[  0,255,  0],'Magenta','Vert'],
 ];
 var activePairIdx=-1;
 function rgbToHex(r,g,b){return'#'+[r,g,b].map(function(v){return('0'+v.toString(16)).slice(-2)}).join('');}
