@@ -67,7 +67,11 @@ static const uint8_t BRIGHTNESS_LEVELS[7] = { 3, 13, 26, 64, 128, 204, 255 };
 #define NB_LUM_LEVELS 7
 
 // Choix valides pour le nombre de LEDs
-static const uint8_t NB_LEDS_CHOICES[5] = { 10, 30, 39, 40, 50 };
+static const uint8_t NB_LEDS_CHOICES[5] = { 10, 30, 39, 40, 50 };  // mode expert (inchangé)
+
+// Choix taille pinceau en mode Simple : 1, 5, 10, 20, 30, 40 LEDs
+static const uint8_t NB_LEDS_SIMPLE[6] = { 1, 5, 10, 20, 30, 40 };
+#define NB_LEDS_SIMPLE_COUNT 6
 
 // Paliers de frequence clignotement (periodes en MICROSECONDES)
 //   idx 0 = Fix    (pas de clignotement, toujours allume)
@@ -189,8 +193,10 @@ struct Config {
     // Luminosite : indice 0-6 dans BRIGHTNESS_LEVELS (defaut = 4 -> 50%)
     uint8_t  niveauLuminosite  = 4;
 
-    // Nb LEDs : indice 0-4 dans NB_LEDS_CHOICES (defaut = 2 -> 39)
+    // Nb LEDs : indice 0-4 dans NB_LEDS_CHOICES (defaut = 2 -> 39) — mode expert
     uint8_t  idxNbLeds         = 2;
+    // Nb LEDs mode Simple : valeur directe dans NB_LEDS_SIMPLE (defaut = 10)
+    uint8_t  idxNbLedsSimple   = 2;   // index dans NB_LEDS_SIMPLE[] -> 10 LEDs
 
     uint8_t  animation         = ANIM_STATIQUE;
 
@@ -218,7 +224,8 @@ struct Config {
     bool     patternDefilant   = true;
 
     // --- helpers ---
-    uint8_t  nbLeds()        const { return NB_LEDS_CHOICES[idxNbLeds < 5 ? idxNbLeds : 4]; }
+    // nbLeds() retourne le nb de LEDs actif selon le mode courant (extern modeExpert)
+    uint8_t  nbLeds()        const;  // défini après déclaration de modeExpert
     uint8_t  intensite()     const { return BRIGHTNESS_LEVELS[niveauLuminosite < NB_LUM_LEVELS ? niveauLuminosite : NB_LUM_LEVELS-1]; }
     uint8_t  taillePoint()   const { return TAILLE_POINT_CHOICES[idxTaillePoint < 4 ? idxTaillePoint : 0]; }
     // Retourne la periode en µs pour Btn1 en mode Expert ; 0 = Fix
@@ -256,6 +263,7 @@ void sauvegarderConfig() {
     prefs.putUChar("r2",   cfg.r2);   prefs.putUChar("g2", cfg.g2); prefs.putUChar("b2", cfg.b2);
     prefs.putUChar("lum",  cfg.niveauLuminosite);
     prefs.putUChar("leds", cfg.idxNbLeds);
+    prefs.putUChar("ledss",cfg.idxNbLedsSimple);
     prefs.putUChar("anim", cfg.animation);
     prefs.putUChar("den",  cfg.densite);
     prefs.putUChar("bfreq", cfg.idxFreqBlink);
@@ -288,7 +296,8 @@ void chargerConfig() {
     cfg.g2                 = prefs.getUChar("g2",  cfg.g2);
     cfg.b2                 = prefs.getUChar("b2",  cfg.b2);
     cfg.niveauLuminosite   = prefs.getUChar("lum", cfg.niveauLuminosite);
-    cfg.idxNbLeds          = prefs.getUChar("leds",cfg.idxNbLeds);
+    cfg.idxNbLeds          = prefs.getUChar("leds", cfg.idxNbLeds);
+    cfg.idxNbLedsSimple    = prefs.getUChar("ledss",cfg.idxNbLedsSimple);
     cfg.animation          = prefs.getUChar("anim",cfg.animation);
     cfg.densite            = prefs.getUChar("den", cfg.densite);
     cfg.idxFreqBlink       = prefs.getUChar("bfreq", cfg.idxFreqBlink);
@@ -411,6 +420,14 @@ uint32_t derniereMs26   = 0;
 // Mode UI : false = Simple (1 couleur, nb LEDs, intensite) | true = Expert (tout)
 // Bascule par appui simultane 3 boutons ~2s. Sauvegarde en NVS namespace "ui".
 bool     modeExpert     = false;
+
+// Définition inline de Config::nbLeds() — dépend de modeExpert
+inline uint8_t Config::nbLeds() const {
+    if (modeExpert)
+        return NB_LEDS_CHOICES[idxNbLeds < 5 ? idxNbLeds : 4];
+    else
+        return NB_LEDS_SIMPLE[idxNbLedsSimple < NB_LEDS_SIMPLE_COUNT ? idxNbLedsSimple : 2];
+}
 
 void sauvegarderModeUI() {
     prefs.begin("ui", false);
@@ -1070,11 +1087,10 @@ void lireBoutons() {
         } else if (!combo2526Actuel && combo2526Actif) {
             combo2526Actif = false;
             if (now - combo2526Ms >= COMBO_DEBOUNCE_MS) {
-                cfg.idxNbLeds = (cfg.idxNbLeds + 1) % 5;
+                cfg.idxNbLedsSimple = (cfg.idxNbLedsSimple + 1) % NB_LEDS_SIMPLE_COUNT;
                 resetAnim();
                 scheduleSave();
-                Serial.print(F("[SIMPLE] NbLeds idx=")); Serial.print(cfg.idxNbLeds);
-                Serial.print(F(" = ")); Serial.println(cfg.nbLeds());
+                Serial.print(F("[SIMPLE] NbLeds=")); Serial.println(cfg.nbLeds());
                 // Feedback : allume exactement le nb de LEDs actif
                 uint8_t nb = cfg.nbLeds();
                 for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
