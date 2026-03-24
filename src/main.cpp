@@ -463,9 +463,12 @@ uint8_t  simpleCouleurIdx  = 0;  // indice courant dans SIMPLE_COULEURS
 // Debounce independant pour GPIO26 et GPIO27 en mode simple
 uint32_t dernierMs26Simple = 0;
 uint32_t dernierMs27Simple = 0;
-// Pour combo GPIO25+GPIO26 : lumiere tenue + appui mode = cycle blink
+// Combo GPIO25+GPIO26 : lumiere tenue + appui 26 = cycle nb LEDs
 bool     combo2526Actif    = false;
 uint32_t combo2526Ms       = 0;
+// Combo GPIO25+GPIO27 : lumiere tenue + appui 27 = cycle blink
+bool     combo2527Actif    = false;
+uint32_t combo2527Ms       = 0;
 #define  COMBO_DEBOUNCE_MS  40   // fenetre de debounce relache (ms)
 
 uint32_t animDerniereMs  = 0;   // pour rainbow/pattern (millis)
@@ -1031,71 +1034,90 @@ void lireBoutons() {
     } else {
         // =====================================================================
         // MODE SIMPLE
-        // GPIO26 appui court          = cycle couleur C1
-        // GPIO27 appui court          = cycle intensite
-        // GPIO25 hold + GPIO26 appui  = cycle fréq. blink C1 (lumiere visible pendant le changement)
-        // GPIO25 hold                 = lumiere (gere dans loop())
+        // GPIO25 hold                  = lumière C1 (géré dans loop())
+        // GPIO27 appui court           = cycle couleur C1 (12 couleurs, une par une)
+        // GPIO26 appui court           = cycle intensité (7 niveaux)
+        // GPIO25 hold + GPIO27 appui   = cycle fréquence blink
+        // GPIO25 hold + GPIO26 appui   = cycle nombre de LEDs (taille pinceau)
         // =====================================================================
 
-        // Detection combo 25+26 : lumiere tenue + appui mode
-        bool comboActuel = btn25 && btn26;
-        if (comboActuel && !combo2526Actif) {
-            combo2526Actif = true;
-            combo2526Ms    = now;
-        } else if (!comboActuel && combo2526Actif) {
-            combo2526Actif = false;
-            // Relache du combo apres debounce minimal
-            if (now - combo2526Ms >= COMBO_DEBOUNCE_MS) {
-                // Cycle fréquence blink C1 Simple (independant du blink Expert)
+        // --- Combo GPIO25+GPIO27 : blink ---
+        bool combo2527Actuel = btn25 && btn27 && !btn26;
+        if (combo2527Actuel && !combo2527Actif) {
+            combo2527Actif = true;
+            combo2527Ms    = now;
+        } else if (!combo2527Actuel && combo2527Actif) {
+            combo2527Actif = false;
+            if (now - combo2527Ms >= COMBO_DEBOUNCE_MS) {
                 cfg.idxFreqBlinkSimple = (cfg.idxFreqBlinkSimple + 1) % NB_BLINK_FREQS;
-                sauvegarderConfig();
-                Serial.print(F("[SIMPLE] Blink C1 Simple idx=")); Serial.println(cfg.idxFreqBlinkSimple);
-                dernierMs26Simple = now;  // evite de re-trigger GPIO26 seul apres relache
+                scheduleSave();
+                Serial.print(F("[SIMPLE] Blink idx=")); Serial.println(cfg.idxFreqBlinkSimple);
+                // Feedback : 1..5 flashes selon l'index
+                for (uint8_t k = 0; k <= cfg.idxFreqBlinkSimple; k++) {
+                    for (uint8_t i = 0; i < cfg.nbLeds(); i++) leds[cfg.ledStart()+i] = couleur1();
+                    FastLED.show(); delay(80);
+                    clearLeds(); FastLED.show(); delay(60);
+                }
+                dernierMs27Simple = now;
             }
         }
 
-        // GPIO26 seul — cycle couleur (seulement si GPIO25 pas tenu)
-        if (!btn25 && btn26 && !btn27
-            && (now - dernierMs26Simple) > DEBOUNCE_MS
-            && etatMode == LOW && etatPrecMode == HIGH) {
+        // --- Combo GPIO25+GPIO26 : nombre de LEDs ---
+        bool combo2526Actuel = btn25 && btn26 && !btn27;
+        if (combo2526Actuel && !combo2526Actif) {
+            combo2526Actif = true;
+            combo2526Ms    = now;
+        } else if (!combo2526Actuel && combo2526Actif) {
+            combo2526Actif = false;
+            if (now - combo2526Ms >= COMBO_DEBOUNCE_MS) {
+                cfg.idxNbLeds = (cfg.idxNbLeds + 1) % 5;
+                resetAnim();
+                scheduleSave();
+                Serial.print(F("[SIMPLE] NbLeds idx=")); Serial.print(cfg.idxNbLeds);
+                Serial.print(F(" = ")); Serial.println(cfg.nbLeds());
+                // Feedback : allume exactement le nb de LEDs actif
+                uint8_t nb = cfg.nbLeds();
+                for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::Black;
+                for (uint8_t i = 0; i < nb; i++) leds[cfg.ledStart()+i] = couleur1();
+                FastLED.show(); delay(300);
+                if (!lumiereActive) { clearLeds(); FastLED.show(); }
+                dernierMs26Simple = now;
+            }
+        }
 
+        // --- GPIO27 seul — cycle couleur C1 (12 couleurs individuelles) ---
+        bool btn27Front = (!combo2527Actuel && !combo2526Actuel
+                          && btn27 && !btn26
+                          && (now - dernierMs27Simple) > DEBOUNCE_MS);
+        static bool btn27PrecSimple = false;
+        if (btn27Front && !btn27PrecSimple) {
             simpleCouleurIdx = (simpleCouleurIdx + 1) % NB_SIMPLE_COULEURS;
-            // Appliquer C1 et C2 de la paire complémentaire
             cfg.r1 = SIMPLE_COULEURS[simpleCouleurIdx][0][0];
             cfg.g1 = SIMPLE_COULEURS[simpleCouleurIdx][0][1];
             cfg.b1 = SIMPLE_COULEURS[simpleCouleurIdx][0][2];
-            cfg.r2 = SIMPLE_COULEURS[simpleCouleurIdx][1][0];
-            cfg.g2 = SIMPLE_COULEURS[simpleCouleurIdx][1][1];
-            cfg.b2 = SIMPLE_COULEURS[simpleCouleurIdx][1][2];
-            sauvegarderConfig();
-            Serial.print(F("[SIMPLE] Paire idx=")); Serial.println(simpleCouleurIdx);
-            // Feedback : moitié gauche C1, moitié droite C2
-            uint8_t n  = cfg.nbLeds();
-            uint8_t st = cfg.ledStart();
-            for (uint8_t i = 0; i < n / 2; i++) leds[st + i] = couleur1();
-            for (uint8_t i = n / 2; i < n; i++) leds[st + i] = couleur2();
-            FastLED.show(); delay(200);
+            scheduleSave();
+            Serial.print(F("[SIMPLE] Couleur idx=")); Serial.println(simpleCouleurIdx);
+            // Feedback : barre entière avec la nouvelle couleur
+            uint8_t nb = cfg.nbLeds();
+            for (uint8_t i = 0; i < nb; i++) leds[cfg.ledStart()+i] = couleur1();
+            FastLED.show(); delay(150);
             if (!lumiereActive) { clearLeds(); FastLED.show(); }
-            dernierMs26Simple = now;
+            dernierMs27Simple = now;
         }
+        btn27PrecSimple = btn27Front;
 
-        // GPIO27 seul — cycle intensite
-        static bool btn27PrecSimple = false;
-        if (!comboActuel && btn27 && !btn26
-            && (now - dernierMs27Simple) > DEBOUNCE_MS) {
-
-            // Front montant GPIO27 uniquement
-            if (!btn27PrecSimple) {
-                cfg.niveauLuminosite = (cfg.niveauLuminosite + 1) % NB_LUM_LEVELS;
-                FastLED.setBrightness(cfg.intensite());
-                sauvegarderConfig();
-                Serial.print(F("[SIMPLE] Lum idx=")); Serial.println(cfg.niveauLuminosite);
-                flashFeedbackSimple();
-                dernierMs27Simple = now;
-            }
-            btn27PrecSimple = true;
-        } else {
-            btn27PrecSimple = false;
+        // --- GPIO26 seul — cycle intensité ---
+        bool btn26Front = (!combo2526Actuel && !combo2527Actuel
+                          && !btn25 && btn26
+                          && (now - dernierMs26Simple) > DEBOUNCE_MS
+                          && etatMode == LOW && etatPrecMode == HIGH);
+        if (btn26Front) {
+            cfg.niveauLuminosite = (cfg.niveauLuminosite + 1) % NB_LUM_LEVELS;
+            FastLED.setBrightness(cfg.intensite());
+            scheduleSave();
+            Serial.print(F("[SIMPLE] Lum idx=")); Serial.println(cfg.niveauLuminosite);
+            flashFeedbackSimple();
+            dernierMs26Simple = now;
         }
     }
 

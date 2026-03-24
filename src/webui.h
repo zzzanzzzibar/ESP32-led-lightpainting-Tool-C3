@@ -52,13 +52,16 @@ input[type=range]{flex:1;accent-color:#aaa;min-width:0;opacity:.8}
 input[type=color]{width:52px;height:38px;border:1px solid #333;border-radius:8px;
   cursor:pointer;background:#212121;padding:2px}
 
-.pairs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:4px}
-.pair-btn{display:flex;flex-direction:column;gap:2px;cursor:pointer;border-radius:8px;
-  padding:3px;border:2px solid transparent;transition:border-color .15s}
-.pair-btn:hover{border-color:#555}
-.pair-btn.active{border-color:#aaa}
-.pair-swatch{height:22px;border-radius:5px;width:100%}
-.pair-label{font-size:.58em;color:#555;text-align:center;line-height:1.1;padding:0 1px}
+.pairs-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:auto auto;gap:3px;margin-bottom:6px}
+.pair-cell{height:32px;border-radius:0;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;border:2px solid transparent;transition:border-color .12s,opacity .12s;opacity:.85}
+.pair-cell:hover{opacity:1;border-color:rgba(255,255,255,.4)}
+.pair-cell.active{border-color:#fff;opacity:1}
+.pair-cell.top{border-radius:7px 7px 0 0}
+.pair-cell.bot{border-radius:0 0 7px 7px;margin-top:-3px}
+.pair-cell.top.active,.pair-cell.bot.active{border-color:#fff}
+.pair-cell-lbl{font-size:.58em;color:rgba(255,255,255,.75);text-shadow:0 1px 2px rgba(0,0,0,.8);
+  pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 2px}
 
 select{background:#212121;color:#ccc;border:1px solid #333;border-radius:7px;
   padding:6px 10px;font-size:.88em;flex:1;outline:none}
@@ -493,26 +496,38 @@ function rgbToHex(r,g,b){return'#'+[r,g,b].map(function(v){return('0'+v.toString
 function buildPairsGrid(){
   var g=document.getElementById('pairs-grid'); if(!g)return;
   g.innerHTML='';
-  COLOR_PAIRS.forEach(function(p,i){
-    var c1=p[0],c2=p[1],n1=p[2],n2=p[3];
-    var btn=document.createElement('div');
-    btn.className='pair-btn'+(i===activePairIdx?' active':'');
-    btn.innerHTML='<div class="pair-swatch" style="background:'+rgbToHex(c1[0],c1[1],c1[2])+'"></div>'
-                 +'<div class="pair-swatch" style="background:'+rgbToHex(c2[0],c2[1],c2[2])+'"></div>'
-                 +'<div class="pair-label">'+n1+'<br>'+n2+'</div>';
-    btn.onclick=(function(idx,c1,c2){return function(){
-      activePairIdx=idx;
-      buildPairsGrid();
-      var h1=rgbToHex(c1[0],c1[1],c1[2]);
-      var h2=rgbToHex(c2[0],c2[1],c2[2]);
-      document.getElementById('c1').value=h1;
-      document.getElementById('c2').value=h2;
-      if(document.getElementById('c1-s'))document.getElementById('c1-s').value=h1;
-      pointColor=h2; updateVisuPoint();
-      send({r1:c1[0],g1:c1[1],b1:c1[2],r2:c2[0],g2:c2[1],b2:c2[2]});
-    };})(i,c1,c2);
-    g.appendChild(btn);
-  });
+  // Rangée du haut : C1 de chaque paire (indices 0-5)
+  // Rangée du bas  : C2 de chaque paire (indices 0-5), face à face avec la C1 du dessus
+  // Chaque colonne = une paire. Cliquer sur C1 ou C2 applique la paire complète.
+  for(var row=0;row<2;row++){
+    for(var col=0;col<6;col++){
+      var i=col; // index de paire (0-5 pour les 6 premières, 6-11 pour les 6 dernières)
+      // On réorganise : col 0-5 = paires 0-5, mais C1 en haut / C2 en bas pour chaque
+      // Rangée 0 = C1 de paire i, Rangée 1 = C2 de paire i
+      var p=COLOR_PAIRS[i];
+      var c=row===0?p[0]:p[1];
+      var lbl=row===0?p[2]:p[3];
+      var cell=document.createElement('div');
+      var isActive=(i===activePairIdx);
+      cell.className='pair-cell'+(isActive?' active':'')+(row===0?' top':' bot');
+      cell.style.background=rgbToHex(c[0],c[1],c[2]);
+      cell.title=(row===0?'C1 ':'C2 ')+lbl+' (paire '+(i+1)+')';
+      cell.innerHTML='<span class="pair-cell-lbl">'+lbl+'</span>';
+      cell.onclick=(function(idx){return function(){
+        activePairIdx=idx;
+        buildPairsGrid();
+        var p2=COLOR_PAIRS[idx];
+        var h1=rgbToHex(p2[0][0],p2[0][1],p2[0][2]);
+        var h2=rgbToHex(p2[1][0],p2[1][1],p2[1][2]);
+        document.getElementById('c1').value=h1;
+        document.getElementById('c2').value=h2;
+        if(document.getElementById('c1-s'))document.getElementById('c1-s').value=h1;
+        pointColor=h2; updateVisuPoint();
+        send({r1:p2[0][0],g1:p2[0][1],b1:p2[0][2],r2:p2[1][0],g2:p2[1][1],b2:p2[1][2]});
+      };})(i);
+      g.appendChild(cell);
+    }
+  }
 }
 
 // Couleurs
