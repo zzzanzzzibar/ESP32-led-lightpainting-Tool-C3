@@ -1046,8 +1046,9 @@ void lireBoutons() {
     if (modeExpert) {
         // =====================================================================
         // MODE EXPERT
-        // GPIO26 appui court seul         = cycle animation
+        // GPIO26 appui court seul          = cycle animation
         // GPIO25 hold + GPIO26 appui court = pattern suivant (si ANIM_PATTERN)
+        //                                  = cycle intensité (autres animations)
         // GPIO27 hold                      = pointeur (gere dans loop())
         // =====================================================================
 
@@ -1068,6 +1069,15 @@ void lireBoutons() {
                 for (uint8_t i = 0; i < cfg.nbLeds(); i++) leds[cfg.ledStart() + i] = CRGB(0, 180, 180);
                 FastLED.show(); delay(80);
                 needShow = true;
+            } else if (btn25) {
+                // LUMIERE tenu + MODE appui (hors PATTERN) = cycle intensité
+                cfg.niveauLuminosite = (cfg.niveauLuminosite + 1) % NB_LUM_LEVELS;
+                FastLED.setBrightness(cfg.intensite());
+                scheduleSave();
+                derniereMs26 = now;
+                Serial.print(F("[EXPERT] Lum idx=")); Serial.println(cfg.niveauLuminosite);
+                feedbackIntensiteActif = true;
+                feedbackIntensiteMs    = now;
             } else if (!btn25) {
                 // MODE seul = cycle animation
                 cfg.animation = (cfg.animation + 1) % ANIM_COUNT;
