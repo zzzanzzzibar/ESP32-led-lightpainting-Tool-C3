@@ -451,6 +451,11 @@ bool     feedbackActif  = false;
 uint32_t feedbackMs     = 0;
 #define  FEEDBACK_DUR_MS  700   // duree du flash de feedback
 
+// Feedback intensité : barre proportionnelle en blanc (mode Simple, GPIO26 seul)
+bool     feedbackIntensiteActif = false;
+uint32_t feedbackIntensiteMs    = 0;
+#define  FEEDBACK_INT_DUR_MS    500   // duree du feedback intensite
+
 // -----------------------------------------------------------------------------
 // MODE SIMPLE — navigation physique
 // -----------------------------------------------------------------------------
@@ -509,6 +514,7 @@ AsyncWebServer server(80);
 void lireBoutons();
 void updateAnimation();
 void afficherFeedbackMode();
+void afficherFeedbackIntensite();
 void allumerLeds();
 void eteindreLeds();
 void clearLeds();
@@ -842,6 +848,16 @@ void loop() {
         }
     }
 
+    // Feedback intensité (mode Simple, GPIO26) : barre blanche proportionnelle 500ms
+    if (feedbackIntensiteActif) {
+        afficherFeedbackIntensite();
+        if (millis() - feedbackIntensiteMs >= FEEDBACK_INT_DUR_MS) {
+            feedbackIntensiteActif = false;
+            if (!lumiereActive && !pointeurActive) eteindreLeds();
+            else needShow = true;
+        }
+    }
+
     // Affichage batterie : bloque le rendu normal pendant BAT_AFFICHAGE_DUR_MS
     if (batAffichage) {
         if (millis() - batAffichageMs >= BAT_AFFICHAGE_DUR_MS) {
@@ -872,10 +888,24 @@ void loop() {
 // -----------------------------------------------------------------------------
 
 // Flash court pour feedback navigation mode simple (1 flash blanc court)
+// (conservé pour autres feedbacks eventuels)
 void flashFeedbackSimple() {
     for (uint8_t i = 0; i < LED_COUNT_MAX; i++) leds[i] = CRGB::White;
     FastLED.show(); delay(60);
     clearLeds(); FastLED.show();
+}
+
+// Feedback intensité mode simple : N LEDs blanches proportionnel au niveau
+// Niveau idx sur NB_LUM_LEVELS-1 → affiche (idx+1)*LED_COUNT_MAX/NB_LUM_LEVELS LEDs
+void afficherFeedbackIntensite() {
+    clearLeds();
+    uint8_t idx = cfg.niveauLuminosite < NB_LUM_LEVELS ? cfg.niveauLuminosite : NB_LUM_LEVELS - 1;
+    // (idx+1) niveaux / 7 niveaux * 40 LEDs, arrondi
+    uint8_t nbAllumees = (uint8_t)(((uint16_t)(idx + 1) * LED_COUNT_MAX + NB_LUM_LEVELS / 2) / NB_LUM_LEVELS);
+    if (nbAllumees < 1) nbAllumees = 1;
+    if (nbAllumees > LED_COUNT_MAX) nbAllumees = LED_COUNT_MAX;
+    for (uint8_t i = 0; i < nbAllumees; i++) leds[i] = CRGB::White;
+    needShow = true;
 }
 
 // -----------------------------------------------------------------------------
@@ -1132,7 +1162,8 @@ void lireBoutons() {
             FastLED.setBrightness(cfg.intensite());
             scheduleSave();
             Serial.print(F("[SIMPLE] Lum idx=")); Serial.println(cfg.niveauLuminosite);
-            flashFeedbackSimple();
+            feedbackIntensiteActif = true;
+            feedbackIntensiteMs    = now;
             dernierMs26Simple = now;
         }
     }
