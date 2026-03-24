@@ -457,7 +457,7 @@ uint32_t feedbackMs     = 0;
 // 12 couleurs C1 espacées régulièrement sur la roue chromatique (tous les 30°)
 // C2 = complémentaire directe (décalée de 180° sur la roue)
 // Format : {{R1,G1,B1}, {R2,G2,B2}}
-static const uint8_t SIMPLE_COULEURS[12][2][3] = {
+static const uint8_t SIMPLE_COULEURS[13][2][3] = {
     // C1 (hue 0°)    C2 (hue 180°)
     {{255,   0,   0},  {  0, 255, 255}},  //  0 Rouge         ↔ Cyan
     {{255,  64,   0},  {  0, 191, 255}},  //  1 Rouge-Orange  ↔ Bleu ciel
@@ -471,8 +471,9 @@ static const uint8_t SIMPLE_COULEURS[12][2][3] = {
     {{  0,   0, 255},  {255, 220,   0}},  //  9 Bleu          ↔ Jaune
     {{128,   0, 255},  {128, 255,   0}},  // 10 Violet        ↔ Chartreuse
     {{255,   0, 255},  {  0, 255,   0}},  // 11 Magenta       ↔ Vert
+    {{255, 255, 255},  {255, 140,   0}},  // 12 Blanc         ↔ Orange
 };
-#define NB_SIMPLE_COULEURS 12
+#define NB_SIMPLE_COULEURS 13
 
 uint8_t  simpleCouleurIdx  = 0;  // indice courant dans SIMPLE_COULEURS
 

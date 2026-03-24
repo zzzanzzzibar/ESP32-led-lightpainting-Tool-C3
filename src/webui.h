@@ -52,7 +52,7 @@ input[type=range]{flex:1;accent-color:#aaa;min-width:0;opacity:.8}
 input[type=color]{width:52px;height:38px;border:1px solid #333;border-radius:8px;
   cursor:pointer;background:#212121;padding:2px}
 
-.pairs-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:auto auto;gap:3px;margin-bottom:6px}
+.pairs-grid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px;margin-bottom:6px}
 .pair-cell{height:32px;border-radius:0;cursor:pointer;display:flex;align-items:center;
   justify-content:center;border:2px solid transparent;transition:border-color .12s,opacity .12s;opacity:.85}
 .pair-cell:hover{opacity:1;border-color:rgba(255,255,255,.4)}
@@ -490,20 +490,17 @@ var COLOR_PAIRS=[
   [[  0,  0,255],[255,220,  0],'Bleu','Jaune'],
   [[128,  0,255],[128,255,  0],'Violet','Chartreuse'],
   [[255,  0,255],[  0,255,  0],'Magenta','Vert'],
+  [[255,255,255],[255,140,  0],'Blanc','Orange'],
 ];
 var activePairIdx=-1;
 function rgbToHex(r,g,b){return'#'+[r,g,b].map(function(v){return('0'+v.toString(16)).slice(-2)}).join('');}
 function buildPairsGrid(){
   var g=document.getElementById('pairs-grid'); if(!g)return;
   g.innerHTML='';
-  // Rangée du haut : C1 de chaque paire (indices 0-5)
-  // Rangée du bas  : C2 de chaque paire (indices 0-5), face à face avec la C1 du dessus
-  // Chaque colonne = une paire. Cliquer sur C1 ou C2 applique la paire complète.
+  var n=COLOR_PAIRS.length;
+  // Rangée C1 (haut) puis rangée C2 (bas) — chaque colonne = une paire
   for(var row=0;row<2;row++){
-    for(var col=0;col<6;col++){
-      var i=col; // index de paire (0-5 pour les 6 premières, 6-11 pour les 6 dernières)
-      // On réorganise : col 0-5 = paires 0-5, mais C1 en haut / C2 en bas pour chaque
-      // Rangée 0 = C1 de paire i, Rangée 1 = C2 de paire i
+    for(var i=0;i<n;i++){
       var p=COLOR_PAIRS[i];
       var c=row===0?p[0]:p[1];
       var lbl=row===0?p[2]:p[3];
@@ -511,7 +508,7 @@ function buildPairsGrid(){
       var isActive=(i===activePairIdx);
       cell.className='pair-cell'+(isActive?' active':'')+(row===0?' top':' bot');
       cell.style.background=rgbToHex(c[0],c[1],c[2]);
-      cell.title=(row===0?'C1 ':'C2 ')+lbl+' (paire '+(i+1)+')';
+      cell.title=(row===0?'C1 ':'C2 ')+lbl;
       cell.innerHTML='<span class="pair-cell-lbl">'+lbl+'</span>';
       cell.onclick=(function(idx){return function(){
         activePairIdx=idx;
