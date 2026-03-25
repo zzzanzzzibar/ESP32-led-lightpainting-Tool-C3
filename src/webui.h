@@ -6,7 +6,7 @@ static const char WEBUI_HTML[] PROGMEM = R"HTMLEOF(<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Light Painting</title>
+<title>Lightpainting by JdK</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d0d0d;color:#ddd;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -117,7 +117,7 @@ select:focus{border-color:#555}
 </style>
 </head>
 <body class="show-simple">
-<h1>&#9733; Light Painting</h1>
+<h1><span id="hdr-star" style="color:#333;transition:color .5s">&#9733;</span> Lightpainting by JdK</h1>
 
 <!-- ======== BANDEAU MODE ======== -->
 <div class="mode-banner">
@@ -707,7 +707,14 @@ function applyState(s){
 }
 
 function poll(){
-  fetch('/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
+  fetch('/state').then(function(r){return r.json();}).then(function(s){
+    var star=document.getElementById('hdr-star');
+    if(star) star.style.color='#f5c400';
+    applyState(s);
+  }).catch(function(){
+    var star=document.getElementById('hdr-star');
+    if(star) star.style.color='#333';
+  });
 }
 setInterval(poll,500);
 buildPairsGrid();

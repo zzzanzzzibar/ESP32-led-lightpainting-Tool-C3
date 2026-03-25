@@ -1381,7 +1381,7 @@ void sendState(AsyncWebServerRequest* req) {
     doc["modeExpert"]         = modeExpert;
     doc["batteryVoltage"]     = (float)((int)(batVoltage * 10.0f + 0.5f)) / 10.0f;
     doc["batteryPercent"]     = batPercent;
-    doc["charging"]           = (batVoltage > BAT_V_FULL + 0.05f);  // >4.2V = chargeur actif
+    doc["charging"]           = false;  // pas de pin CHRG câblé — désactivé
 
     JsonArray pats = doc["patternsNoms"].to<JsonArray>();
     for (uint8_t i = 0; i < NB_PATTERNS; i++) pats.add(PATTERNS[i].nom);
