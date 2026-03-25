@@ -760,7 +760,7 @@ void loop() {
         lumiereActive = true;
         resetAnim();
         animEtatBlink  = true;   // commence allumé (après resetAnim pour ne pas être écrasé)
-        animDerniereUs = micros();
+        animDerniereUs = nowUs;  // référence = maintenant, oscillateur ne toggle pas ce tour-ci
         Serial.print(F("[ON] "));
         Serial.println(NOM_ANIMATIONS[cfg.animation]);
     } else if (!lumiere25 && lumiereActive) {
