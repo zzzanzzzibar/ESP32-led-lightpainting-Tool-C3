@@ -556,13 +556,16 @@ function onDensite(val){
 }
 
 // Modes
-function setAnim(idx){
+function applyAnimUI(idx){
   animIdx=idx;
   for(var i=0;i<3;i++){
     document.getElementById('tab-'+i).className='mode-tab'+(i===idx?' active':'');
     var sec=document.getElementById('sec-'+i);
     if(sec) sec.className='sec'+(i===idx?' vis':'');
   }
+}
+function setAnim(idx){
+  applyAnimUI(idx);
   send({animation:idx});
 }
 
@@ -684,7 +687,7 @@ function applyState(s){
 
     if(s.idxTaillePoint!==undefined){ pointIdx=s.idxTaillePoint; setActiveBtn('grp-point',pointIdx); }
     if(s.posPoint!==undefined){ posPoint=s.posPoint; setActiveBtn('grp-pos',posPoint); }
-    if(s.animation!==undefined && s.animation!==animIdx) setAnim(s.animation);
+    if(s.animation!==undefined && s.animation!==animIdx) applyAnimUI(s.animation);
   }
 
   // Toujours mis à jour : état temps réel + batterie + mode
